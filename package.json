@@ -1,0 +1,19 @@
+{
+  "name": "jotform-interview-platform",
+  "private": true,
+  "workspaces": [
+    "packages/frontend",
+    "packages/backend",
+    "packages/shared"
+  ],
+  "scripts": {
+    "frontend": "npm run dev --workspace=packages/frontend",
+    "backend": "npm run dev --workspace=packages/backend",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,296 @@
+/* Layout overrides for interview views */
+
+.interview-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 64px);
+}
+
+/* Sidebar shared */
+.sidebar {
+  background: white;
+  border-right: 1px solid var(--jotform-border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sidebar--interviewer {
+  width: 280px;
+}
+
+.sidebar--interviewee {
+  width: 320px;
+}
+
+/* Center panel */
+.center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Right panel (interviewer notes) */
+.right-panel {
+  width: 300px;
+  background: white;
+  border-left: 1px solid var(--jotform-border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 1rem;
+}
+
+.right-panel__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--jotform-text);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.right-panel__textarea {
+  width: 100%;
+  min-height: 200px;
+  border: 1px solid var(--jotform-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  resize: vertical;
+  color: var(--jotform-text);
+  line-height: 1.5;
+}
+
+.right-panel__textarea:focus {
+  outline: none;
+  border-color: var(--jotform-blue);
+  box-shadow: 0 0 0 3px rgba(0, 153, 255, 0.15);
+}
+
+/* Sidebar sections */
+.sidebar-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--jotform-border);
+}
+
+.sidebar-section__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--jotform-text-light);
+  margin-bottom: 0.75rem;
+}
+
+/* Question list items */
+.question-item {
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 0.25rem;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.question-item:hover {
+  background: var(--jotform-light-gray);
+}
+
+.question-item--active {
+  background: rgba(0, 153, 255, 0.08);
+  border-left: 3px solid var(--jotform-blue);
+}
+
+.question-item__title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+/* Difficulty badge */
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge--easy {
+  background: rgba(43, 197, 115, 0.12);
+  color: #1a9a54;
+}
+
+.badge--medium {
+  background: rgba(255, 182, 41, 0.15);
+  color: #b57d00;
+}
+
+.badge--hard {
+  background: rgba(242, 58, 60, 0.12);
+  color: #c02020;
+}
+
+/* Problem description */
+.problem-description {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--jotform-text);
+}
+
+.problem-description h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.problem-description pre {
+  background: var(--jotform-light-gray);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8125rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.problem-description ul {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+/* Chat bar */
+.chat-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: white;
+  border-top: 1px solid var(--jotform-border);
+}
+
+.chat-bar__input {
+  flex: 1;
+  border: 1px solid var(--jotform-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--jotform-text);
+}
+
+.chat-bar__input:focus {
+  outline: none;
+  border-color: var(--jotform-blue);
+}
+
+.chat-bar__btn {
+  background: none;
+  border: 1px solid var(--jotform-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--jotform-text-light);
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.chat-bar__btn:hover {
+  color: var(--jotform-text);
+  border-color: var(--jotform-text-light);
+}
+
+.chat-bar__btn--active {
+  color: var(--jotform-blue);
+  border-color: var(--jotform-blue);
+}
+
+.chat-bar__status {
+  font-size: 0.75rem;
+  color: var(--jotform-text-light);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Evaluation criteria */
+.eval-item {
+  margin-bottom: 0.75rem;
+}
+
+.eval-item__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--jotform-text);
+  margin-bottom: 0.25rem;
+}
+
+.eval-item__slider {
+  width: 100%;
+  accent-color: var(--jotform-blue);
+}
+
+.eval-item__score {
+  font-size: 0.75rem;
+  color: var(--jotform-text-light);
+  text-align: right;
+}
+
+/* Header extras */
+.header__meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header__timer {
+  color: white;
+  font-family: 'Fira Code', monospace;
+  font-size: 1.125rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+}
+
+.header__candidate {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+}
+
+/* Test results */
+.test-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--jotform-border);
+}
+
+.test-result__icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.test-result__icon--pass {
+  color: var(--jotform-success);
+}
+
+.test-result__icon--fail {
+  color: var(--jotform-error);
+}
+
+.test-result__details {
+  font-size: 0.8125rem;
+  font-family: 'Fira Code', monospace;
+}
