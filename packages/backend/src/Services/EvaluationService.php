@@ -1,6 +1,7 @@
 <?php
     class EvaluationService{
 
+        
         private Evaluation $evaluation;
 
         public function __construct(){
@@ -8,7 +9,7 @@
         }
 
         public function saveEvaluation(string $sessionId, string $questionId, array $criteriaScores, string $notes){
-            $this->evaluation->upsert($sessionId,$questionId,$criteriaScores,$notes);
+            $this->evaluation->upsert($sessionId,$questionId, json_encode($criteriaScores),$notes);
         }
 
         public function getSessionEvaluations(string $sessionId){

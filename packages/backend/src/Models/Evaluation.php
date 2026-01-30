@@ -1,6 +1,10 @@
 <?php
-    class Evaluations { 
+
+    $db = Database::getConnection();
+    class Evaluation { 
+
         public function upsert(string $sessionId, string $questionId, string $criteriaScoreJson, string $notes) {
+            global $db;
             $db->query("INSERT INTO evaluations (session_id, question_id, criteria_score, notes) VALUES (:session_id, :question_id, :criteria_score, :notes) ON DUPLICATE KEY UPDATE criteria_score = :criteria_score, notes = :notes");
             $db->bind(":session_id", $sessionId);
             $db->bind(":question_id", $questionId);
@@ -10,6 +14,7 @@
         }
 
         public function getBySessionAndQuestion(string $sessionId, string $questionId) {
+            global $db;
             $db->query("SELECT * FROM evaluations WHERE session_id = :session_id AND question_id = :question_id");
             $db->bind(":session_id", $sessionId);
             $db->bind(":question_id", $questionId);
@@ -18,6 +23,8 @@
         }
 
         public function getBySession(string $sessionId) {
+            global $db;
+
             $db->query("SELECT * FROM evaluations WHERE session_id = :session_id");
             $db->bind(":session_id", $sessionId);
             $evaluations = $db->fetchAll();

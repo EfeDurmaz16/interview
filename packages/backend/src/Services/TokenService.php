@@ -1,6 +1,6 @@
 <?php
 
-class TokenService {
+class TokenService{
     public static function generateToken(string $prefix): string {
         return $prefix . '_' . bin2hex(random_bytes(16));
     }

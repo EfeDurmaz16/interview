@@ -14,15 +14,15 @@
         }
 
         public function getSessionQuestions(string $sessionId) {
-            $sessionQuestions = $this->question->getBySessionId($sessionId);
+            $sessionQuestions = $this->question->getQuestionsBySessionId($sessionId);
             return $sessionQuestions;
         }
         
-        public function assignQuestionsToSession(string $sessionId, string $questionId) {
-            $this->question->addToSession($sessionId,$questionId);
+        public function assignQuestionToSession(string $sessionId, string $questionId) {
+            $this->question->addToSession($sessionId, $questionId, 0);
         }
 
-        public function removeQuestionsFromSession(string $sessionId, string $questionId) {
+        public function removeQuestionFromSession(string $sessionId, string $questionId) {
             $this->question->removeFromSession($sessionId,$questionId);
         }
 
