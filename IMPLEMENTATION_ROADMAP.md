@@ -1,43 +1,74 @@
-# Jotform Interview Platform - Implementation Roadmap
+# Jotform Interview Platform — Implementation Roadmap
 
 ## Monorepo Structure
 
 ```
 interview/
-├── package.json                     # Workspace root
+├── package.json                          # Workspace root (npm workspaces)
+├── .gitignore
+├── IMPLEMENTATION_ROADMAP.md
 ├── packages/
-│   ├── shared/                      # Shared types & constants
-│   │   └── src/
-│   │       └── index.ts             # WebSocket message types, question types, session types
-│   ├── frontend/                    # React + Vite + Monaco
+│   ├── frontend/                         # React + Vite + Monaco (✅ DONE)
+│   │   ├── vite.config.ts
+│   │   ├── tsconfig.json
+│   │   ├── index.html
 │   │   ├── public/
-│   │   │   ├── assets/
-│   │   │   │   └── jotform-logo.svg # Header logo (120x30)
-│   │   │   └── css/
-│   │   │       └── jotform-theme.css # Jotform design language
+│   │   │   ├── assets/jotform-logo.svg
+│   │   │   └── css/jotform-theme.css
 │   │   └── src/
+│   │       ├── main.tsx
+│   │       ├── App.tsx                   # Token-based routing: /interview/:token
+│   │       ├── App.css
 │   │       ├── components/
-│   │       │   ├── Header/          # Jotform branded header
-│   │       │   ├── Sidebar/         # Question list (interviewer), problem desc (interviewee)
-│   │       │   ├── Editor/          # Monaco editor wrapper
-│   │       │   ├── Output/          # Code output/errors panel
-│   │       │   └── Chat/            # Voice/text chat bar
-│   │       ├── hooks/               # useWebSocket, usePhpWasm, useSession
-│   │       ├── services/            # WebSocket client, PHP-WASM runner
-│   │       ├── contexts/            # SessionContext, EditorContext
-│   │       └── types/
-│   └── backend/                     # PHP + Ratchet WebSocket + SQLite
-│       ├── composer.json            # PHP dependencies (Ratchet, PDO)
+│   │       │   ├── Header/Header.tsx     # Logo, timer, End Session btn
+│   │       │   ├── Sidebar/InterviewerSidebar.tsx
+│   │       │   ├── Sidebar/IntervieweeSidebar.tsx
+│   │       │   ├── Editor/CodeEditor.tsx # Monaco, PHP only
+│   │       │   ├── Editor/EditorToolbar.tsx
+│   │       │   └── Output/OutputPanel.tsx
+│   │       ├── pages/
+│   │       │   ├── InterviewPage.tsx     # Token → role resolver
+│   │       │   ├── InterviewerPage.tsx   # 3-col: sidebar | editor | solution+checklist
+│   │       │   └── IntervieweePage.tsx   # 2-col: problem | editor+output
+│   │       ├── hooks/                    # (Phase 4)
+│   │       ├── services/                 # (Phase 3)
+│   │       └── contexts/                 # (Phase 6)
+│   │
+│   └── backend/                          # PHP Backend
+│       ├── composer.json
+│       ├── bin/
+│       │   └── server.php                # CLI: starts WS + HTTP server
 │       ├── public/
-│       │   └── index.php            # REST API entry point (plain PHP router)
-│       ├── src/
-│       │   ├── WebSocket/           # Ratchet WS server, room management, cursor sync
-│       │   ├── Routes/              # REST: sessions, questions, evaluations
-│       │   ├── Models/              # PDO + SQLite schemas
-│       │   ├── Services/            # Session logic, scoring
-│       │   └── Config/
-│       └── bin/
-│           └── server.php           # CLI entry: starts Ratchet WS + REST server
+│       │   └── index.php                 # REST API entry (plain PHP router)
+│       ├── database/
+│       │   ├── schema.sql                # DDL
+│       │   └── interview.sqlite          # SQLite DB file (gitignored)
+│       ├── seeds/
+│       │   └── questions.json            # Question bank data
+│       └── src/
+│           ├── Config/
+│           │   └── Database.php
+│           ├── Models/
+│           │   ├── Session.php
+│           │   ├── Token.php
+│           │   ├── Question.php
+│           │   ├── Evaluation.php
+│           │   └── CodeSnapshot.php
+│           ├── Routes/
+│           │   ├── Router.php
+│           │   ├── SessionRoutes.php
+│           │   ├── QuestionRoutes.php
+│           │   └── EvaluationRoutes.php
+│           ├── Services/
+│           │   ├── SessionService.php
+│           │   ├── TokenService.php
+│           │   ├── QuestionService.php
+│           │   ├── EvaluationService.php
+│           │   └── ReportService.php
+│           └── WebSocket/
+│               ├── Server.php
+│               ├── ConnectionManager.php
+│               └── MessageHandler.php
 ```
 
 ---
@@ -46,264 +77,433 @@ interview/
 
 - **Brand colors**: `--jotform-blue: #0099FF`, `--jotform-orange: #FF6100`, `--jotform-yellow: #FFB629`, `--jotform-navy: #0A1551`
 - **Header**: Navy gradient `linear-gradient(135deg, #0A1551 0%, #1a2a6c 100%)`, white text
-- **Header logo**: `https://cdn.jotfor.ms/assets/resources/svg/jotform-logo-transparent-W.svg` (120px x 30px)
 - **Favicon**: `https://cdn.jotfor.ms/assets/resources/svg/jotform-icon-transparent.svg`
-- **Font**: `'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
 - **Code font**: `'Fira Code', 'Monaco', monospace`
 - **Primary button**: orange `#FF6100`, hover `#e55700`
-- **Border radius**: 8px (buttons, inputs), 12px (panels)
-- **Shadows**: `0 2px 8px rgba(0,0,0,0.06)` for panels
 
 ---
 
-## Phase 1: Shared Types & Project Scaffolding
+## Auth & Routing Model
 
-### Task 1.1 — Define shared WebSocket message types
-**File**: `packages/shared/src/index.ts`
-- Define `enum WSMessageType` with values: `JOIN_SESSION`, `LEAVE_SESSION`, `CODE_CHANGE`, `CURSOR_MOVE`, `SET_QUESTION`, `RUN_CODE`, `CODE_OUTPUT`, `EVALUATION_UPDATE`, `CHAT_MESSAGE`
-- Define `interface WSMessage<T>` with fields: `type: WSMessageType`, `sessionId: string`, `userId: string`, `role: 'interviewer' | 'interviewee'`, `payload: T`, `timestamp: number`
-- Define `interface Question` with: `id`, `title`, `description`, `difficulty`, `category`, `templateCode: Record<string, string>` (per language), `testCases: TestCase[]`, `evaluationCriteria: EvaluationCriterion[]`
-- Define `interface TestCase` with: `input`, `expectedOutput`, `isHidden`
-- Define `interface EvaluationCriterion` with: `id`, `label`, `maxScore`, `currentScore`, `notes`
-- Define `interface Session` with: `id`, `interviewerId`, `intervieweeId`, `status`, `questions`, `startTime`, `endTime`
+URL'de role bilgisi yok. Her session için 2 opaque token üretilir:
 
-### Task 1.2 — Configure Vite for frontend
-**File**: `packages/frontend/vite.config.ts`
-- Setup `@vitejs/plugin-react`
-- Set dev server port 3000
-- Proxy `/api` to backend at `localhost:8000`
-- Proxy `/ws` to WebSocket backend
+```
+POST /api/sessions → {
+  interviewer_token: "int_8f3a...",   →  /interview/int_8f3a...
+  candidate_token:   "cnd_b72e...",   →  /interview/cnd_b72e...
+}
 
-### Task 1.3 — Create frontend entry point
-**Files**: `packages/frontend/index.html`, `packages/frontend/src/main.tsx`, `packages/frontend/src/App.tsx`
-- Include Jotform favicon, Fira Code font, `jotform-theme.css`
-- `App.tsx`: React Router with routes `/interview/:sessionId/interviewer` and `/interview/:sessionId/interviewee`
-
----
-
-## Phase 2: Frontend — Core UI Components
-
-### Task 2.1 — Header component
-**File**: `packages/frontend/src/components/Header/Header.tsx`
-- Jotform navy gradient header
-- Logo: `jotform-logo-transparent-W.svg` at 120x30px
-- Title: "Code Interview Platform"
-- Right side: session timer (MM:SS), candidate name (interviewer view), recording indicator
-- Use CSS classes from `jotform-theme.css` (`.header`, `.header__brand`, `.header__logo`, `.header__title`)
-
-### Task 2.2 — Sidebar component (Interviewer view)
-**File**: `packages/frontend/src/components/Sidebar/InterviewerSidebar.tsx`
-- **Top section**: Scrollable list of questions, each showing title + difficulty badge + category tag
-- Clicking a question sends it to the interviewee via WebSocket (`SET_QUESTION`)
-- **Middle section**: Evaluation criteria checkboxes with score sliders (per the active question)
-- **Bottom section**: Question bank browser grouped by category (Arrays, Strings, Trees, etc.)
-- Active question highlighted with `--jotform-blue` left border
-- Use Jotform button styles (`.btn--primary`, `.btn--secondary`)
-
-### Task 2.3 — Sidebar component (Interviewee view)
-**File**: `packages/frontend/src/components/Sidebar/IntervieweeSidebar.tsx`
-- **Title**: Current question name + difficulty badge
-- **Description**: Problem statement in markdown
-- **Examples**: Input/output pairs in code blocks
-- **Constraints**: Bullet list
-- Scrollable, Jotform panel styling (white bg, 12px radius, shadow)
-
-### Task 2.4 — Monaco Editor wrapper
-**File**: `packages/frontend/src/components/Editor/CodeEditor.tsx`
-- Use `@monaco-editor/react`
-- Dark theme (VS Code dark)
-- Language selector in toolbar (Python, C, C++, Java, Go, Rust, PHP)
-- Editor header bar (dark bg `#1e1e1e`) showing filename
-- On every keystroke, debounce 150ms and send `CODE_CHANGE` via WebSocket
-- Accept incoming `CODE_CHANGE` messages and apply without triggering send loop
-- Show remote cursor position with colored marker (interviewer = blue, interviewee = orange)
-
-### Task 2.5 — Editor toolbar
-**File**: `packages/frontend/src/components/Editor/EditorToolbar.tsx`
-- Language dropdown (`.select` styling from theme)
-- "Run Code" button (`.btn--primary`, orange) — triggers PHP-WASM execution or sends `RUN_CODE` to backend
-- "Clear" button (`.btn--secondary`)
-- "Submit" button for interviewee (`.btn--primary`)
-
-### Task 2.6 — Output panel
-**File**: `packages/frontend/src/components/Output/OutputPanel.tsx`
-- Tabs: "Output" / "Errors" (`.output-tab` styling)
-- Code output in monospace (`Fira Code`)
-- Test case results: green checkmark or red X per test case, showing input/output/expected
-- Status bar at bottom: running indicator (pulsing orange dot), execution time, "Press Ctrl+Enter to run"
-- Error panel: red text, compilation error with line number, optional hint
-
-### Task 2.7 — Chat/Communication bar
-**File**: `packages/frontend/src/components/Chat/ChatBar.tsx`
-- Fixed footer bar
-- Buttons: Mute, Video Off, Ask Hint (interviewee only)
-- Text chat input
-- "Voice Chat: Connected" status indicator
-- Chat messages sent via WebSocket `CHAT_MESSAGE`
-
----
-
-## Phase 3: PHP-WASM Integration (In-Browser Code Execution)
-
-### Task 3.1 — Evaluate and integrate php-wasm
-**File**: `packages/frontend/src/services/phpWasm.ts`
-- Use `seanmorris/php-wasm` (preferred — actively maintained, better API)
-- Load PHP WASM binary on page load
-- Expose `runPhp(code: string): Promise<{ stdout: string, stderr: string, exitCode: number }>`
-- Handle infinite loop detection with a timeout (10 seconds)
-- Capture both stdout and stderr
-
-### Task 3.2 — Multi-language execution strategy
-**File**: `packages/frontend/src/services/codeRunner.ts`
-- PHP: runs in browser via php-wasm (Task 3.1)
-- Python: evaluate `pib` (oraoto/pib) or Pyodide as a Python-in-browser option
-- Other languages (C, C++, Java, Go, Rust): send `RUN_CODE` message to backend for server-side sandboxed execution
-- Unified interface: `runCode(language: string, code: string, stdin?: string): Promise<ExecutionResult>`
-
-### Task 3.3 — Test case runner
-**File**: `packages/frontend/src/services/testRunner.ts`
-- For each test case: call `runCode()` with the test input piped as stdin
-- Compare stdout (trimmed) with expected output
-- Return per-test results: passed/failed, actual output, expected output, execution time
-- Aggregate: "X/Y test cases passed"
-
----
-
-## Phase 4: WebSocket Real-Time Communication
-
-### Task 4.1 — WebSocket client hook
-**File**: `packages/frontend/src/hooks/useWebSocket.ts`
-- Connect to `ws://localhost:8000/ws`
-- Auto-reconnect with exponential backoff (1s, 2s, 4s, max 30s)
-- Send `JOIN_SESSION` on connect with `{ sessionId, userId, role }`
-- Message queue for offline buffering
-- Expose: `sendMessage(msg)`, `lastMessage`, `connectionStatus`
-
-### Task 4.2 — Backend WebSocket server
-**File**: `packages/backend/src/WebSocket/Server.php`
-- Use Ratchet (`cboden/ratchet`) PHP WebSocket library
-- Room-based routing: each session is a room, max 2 participants (interviewer + interviewee)
-- On `JOIN_SESSION`: add client to room, notify other participant
-- On `CODE_CHANGE`: broadcast to other participants in the room
-- On `CURSOR_MOVE`: broadcast cursor position to others
-- On `SET_QUESTION`: forward to interviewee
-- On `RUN_CODE`: if server-side execution needed, run sandboxed and send `CODE_OUTPUT` back
-- Handle disconnects: notify other participant, keep session alive for 5 minutes for reconnect
-
-### Task 4.3 — Cursor synchronization
-**File**: `packages/frontend/src/hooks/useCursorSync.ts`
-- On local cursor move (Monaco `onDidChangeCursorPosition`), send `CURSOR_MOVE` with `{ line, column }`
-- On receiving `CURSOR_MOVE`, render a colored decoration in Monaco at that position
-- Throttle outgoing cursor updates to 50ms
-- Show participant name label above remote cursor
-
-### Task 4.4 — Code synchronization with conflict resolution
-**File**: `packages/frontend/src/hooks/useCodeSync.ts`
-- Send incremental text changes (Monaco `onDidChangeModelContent` delta)
-- Apply incoming deltas using Monaco `applyEdits`
-- Use operation versioning: each change has a monotonic sequence number
-- If versions diverge, the interviewer's version wins (interviewer has authority)
-
----
-
-## Phase 5: Backend — REST API & Database
-
-### Task 5.1 — SQLite database schema
-**File**: `packages/backend/src/Models/schema.sql`
-```sql
-CREATE TABLE sessions (id TEXT PK, interviewer_id TEXT, interviewee_id TEXT, status TEXT, created_at, ended_at);
-CREATE TABLE questions (id TEXT PK, session_id TEXT FK, title, description, difficulty, category, template_code JSON, test_cases JSON, evaluation_criteria JSON, sort_order INT);
-CREATE TABLE evaluations (id TEXT PK, session_id TEXT FK, question_id TEXT FK, criteria_scores JSON, notes TEXT, updated_at);
-CREATE TABLE chat_messages (id TEXT PK, session_id TEXT FK, user_id TEXT, role TEXT, message TEXT, created_at);
-CREATE TABLE code_snapshots (id TEXT PK, session_id TEXT FK, question_id TEXT FK, language TEXT, code TEXT, created_at);
+GET /api/resolve/:token → { role: "interviewer"|"candidate", session_id: "..." }
 ```
 
-### Task 5.2 — Session REST endpoints
-**File**: `packages/backend/src/Routes/Sessions.php`
-- `POST /api/sessions` — create new session, return session ID + interviewer/interviewee URLs
-- `GET /api/sessions/:id` — get session details
-- `PATCH /api/sessions/:id` — update session status (start, end)
-- `GET /api/sessions/:id/report` — generate final report (scores, notes, code snapshots, timeline)
-
-### Task 5.3 — Question REST endpoints
-**File**: `packages/backend/src/Routes/Questions.php`
-- `POST /api/sessions/:id/questions` — add question to session
-- `GET /api/sessions/:id/questions` — list questions for session
-- `PUT /api/sessions/:id/questions/:qid` — update question
-- `DELETE /api/sessions/:id/questions/:qid` — remove question
-- `GET /api/questions/bank` — list all available questions from question bank
-
-### Task 5.4 — Evaluation REST endpoints
-**File**: `packages/backend/src/Routes/Evaluations.php`
-- `PUT /api/sessions/:sid/questions/:qid/evaluation` — update evaluation scores and notes
-- `GET /api/sessions/:sid/evaluations` — get all evaluations for session
+Candidate, interviewer ekranına hiçbir şekilde erişemez. Token → role mapping backend'de saklanır.
 
 ---
 
-## Phase 6: Session & State Management
+## ✅ Phase 1: Frontend UI (DONE)
 
-### Task 6.1 — Session context
-**File**: `packages/frontend/src/contexts/SessionContext.tsx`
-- React context providing: `session`, `currentQuestion`, `role`, `connectionStatus`
-- On mount: fetch session data from `GET /api/sessions/:id`
-- On `SET_QUESTION` WS message: update `currentQuestion`
-- Persist session state to localStorage for reconnect
-
-### Task 6.2 — Editor context
-**File**: `packages/frontend/src/contexts/EditorContext.tsx`
-- Manage: `code`, `language`, `executionResult`, `isRunning`
-- Coordinate between editor component, code runner, and WebSocket sync
-
-### Task 6.3 — Interviewer page layout
-**File**: `packages/frontend/src/pages/InterviewerPage.tsx`
-- Three-column layout: Sidebar (questions + eval, ~280px) | Editor (flex) | Evaluation notes (~300px)
-- Header with candidate name and timer
-- Bottom: live view of candidate's code (read-only Monaco instance) OR shared editor
-- Wire up all contexts and WebSocket
-
-### Task 6.4 — Interviewee page layout
-**File**: `packages/frontend/src/pages/IntervieweePage.tsx`
-- Two-column layout: Sidebar (problem description, ~300px) | Editor + Output (flex)
-- Header with timer and recording indicator
-- Bottom: Output panel with tabs (Output, Errors) and test case results
-- Footer: Chat bar with voice/video/hint controls
+Tamamlanan dosyalar: `vite.config.ts`, `tsconfig.json`, `index.html`, `main.tsx`, `App.tsx`, `App.css`, `Header.tsx`, `InterviewerSidebar.tsx`, `IntervieweeSidebar.tsx`, `CodeEditor.tsx`, `EditorToolbar.tsx`, `OutputPanel.tsx`, `InterviewPage.tsx`, `InterviewerPage.tsx`, `IntervieweePage.tsx`
 
 ---
 
-## Phase 7: Polish & Additional Features
+## Phase 2: PHP Backend — Project Scaffolding
 
-### Task 7.1 — Question bank seed data
-**File**: `packages/backend/src/Seeds/questions.json`
-- 10-15 curated coding questions across categories: Arrays, Strings, Linked Lists, Trees, Dynamic Programming
-- Each with: title, description, difficulty, category, template code (Python + JS), test cases, evaluation criteria
+### Task 2.1 — Composer project init
+**File**: `packages/backend/composer.json`
+```json
+{
+  "require": {
+    "cboden/ratchet": "^0.4",
+    "react/event-loop": "^1.4"
+  },
+  "autoload": {
+    "psr-4": { "App\\": "src/" }
+  }
+}
+```
+- `composer install` ile bağımlılıkları kur
+- PSR-4 autoload: `App\` → `src/`
 
-### Task 7.2 — Session report generation
+### Task 2.2 — Database config
+**File**: `packages/backend/src/Config/Database.php`
+- `class Database`
+  - `private static ?PDO $instance = null`
+  - `public static function getConnection(): PDO` — singleton, `interview.sqlite`'a bağlanır, `ERRMODE_EXCEPTION` + `FETCH_ASSOC` ayarlar
+  - `public static function init(): void` — `schema.sql` dosyasını okur ve çalıştırır (tablo yoksa oluşturur)
+
+### Task 2.3 — SQLite schema
+**File**: `packages/backend/database/schema.sql`
+```sql
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'waiting',  -- waiting | active | ended
+    candidate_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    started_at TEXT,
+    ended_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tokens (
+    token TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('interviewer', 'candidate')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS questions (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    difficulty TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
+    category TEXT NOT NULL,
+    template_code TEXT NOT NULL DEFAULT '',   -- PHP template
+    test_cases TEXT NOT NULL DEFAULT '[]',    -- JSON: [{input, expected_output, is_hidden}]
+    evaluation_criteria TEXT NOT NULL DEFAULT '[]', -- JSON: [{id, label, max_score}]
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS session_questions (
+    session_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (session_id, question_id),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(id)
+);
+
+CREATE TABLE IF NOT EXISTS evaluations (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    criteria_scores TEXT NOT NULL DEFAULT '{}', -- JSON: {criterion_id: score}
+    notes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS code_snapshots (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    is_submission INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+---
+
+## Phase 3: PHP Backend — Token & Session Service
+
+### Task 3.1 — Token Service
+**File**: `packages/backend/src/Services/TokenService.php`
+- `class TokenService`
+  - `public function generateToken(string $prefix): string` — `$prefix . '_' . bin2hex(random_bytes(16))` (32 hex char) döner
+  - `public function createSessionTokens(string $sessionId): array` — `interviewer` ve `candidate` için 2 token üretir, `tokens` tablosuna INSERT eder, `['interviewer_token' => ..., 'candidate_token' => ...]` döner
+  - `public function resolveToken(string $token): ?array` — `tokens` tablosundan token ile sorgular, `['role' => ..., 'session_id' => ...]` veya `null` döner
+  - `public function invalidateSessionTokens(string $sessionId): void` — session'a ait tüm token'ları siler
+
+### Task 3.2 — Session Model
+**File**: `packages/backend/src/Models/Session.php`
+- `class Session`
+  - `public function create(): string` — yeni session oluşturur (`id = uniqid prefix 'ses_'`), session ID döner
+  - `public function findById(string $id): ?array` — session satırını döner
+  - `public function updateStatus(string $id, string $status): void` — `status` + ilgili timestamp günceller (`active` → `started_at`, `ended` → `ended_at`)
+  - `public function delete(string $id): void` — session'ı siler (CASCADE ile token, evaluation vb. de silinir)
+
+### Task 3.3 — Token Model
+**File**: `packages/backend/src/Models/Token.php`
+- `class Token`
+  - `public function insert(string $token, string $sessionId, string $role): void`
+  - `public function findByToken(string $token): ?array`
+  - `public function deleteBySessionId(string $sessionId): void`
+
+### Task 3.4 — Session Service
+**File**: `packages/backend/src/Services/SessionService.php`
+- `class SessionService`
+  - `private TokenService $tokenService`
+  - `private Session $sessionModel`
+  - `public function createSession(?string $candidateName): array` — Session oluşturur, token'lar üretir. Döner: `{ session_id, interviewer_token, candidate_token, interviewer_url, candidate_url }`
+  - `public function resolveToken(string $token): ?array` — TokenService proxy, role + session_id döner
+  - `public function startSession(string $sessionId): void` — status → `active`, `started_at` set
+  - `public function endSession(string $sessionId): void` — status → `ended`, `ended_at` set
+  - `public function getSession(string $sessionId): ?array` — session detaylarını döner
+
+---
+
+## Phase 4: PHP Backend — REST API
+
+### Task 4.1 — Router
+**File**: `packages/backend/src/Routes/Router.php`
+- `class Router`
+  - `private array $routes = []`
+  - `public function get(string $path, callable $handler): void`
+  - `public function post(string $path, callable $handler): void`
+  - `public function put(string $path, callable $handler): void`
+  - `public function patch(string $path, callable $handler): void`
+  - `public function delete(string $path, callable $handler): void`
+  - `public function dispatch(string $method, string $uri): void` — URI'yi parse eder, `:param` pattern'leri match eder, handler'ı çağırır. 404 → JSON `{"error": "Not found"}`
+  - Path params: `/api/sessions/:id` → handler `$params['id']` alır
+  - Her handler'a `$params` (path params) ve `$body` (JSON decoded POST body) geçilir
+  - Response helper: `json(array $data, int $status = 200)` — `Content-Type: application/json`, `http_response_code`, `json_encode`
+
+### Task 4.2 — REST entry point
+**File**: `packages/backend/public/index.php`
+- `require __DIR__ . '/../vendor/autoload.php'`
+- CORS header'ları set et: `Access-Control-Allow-Origin: *`, `Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS`, `Allow-Headers: Content-Type`
+- OPTIONS request'leri 204 ile bitir
+- `Database::init()` çağır
+- Router oluştur, tüm route'ları register et
+- `$router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI'])`
+
+### Task 4.3 — Session Routes
+**File**: `packages/backend/src/Routes/SessionRoutes.php`
+- `class SessionRoutes`
+  - `public static function register(Router $router): void`
+  - `POST /api/sessions` → `SessionService::createSession($body['candidate_name'] ?? null)` → 201 JSON `{ session_id, interviewer_token, candidate_token, interviewer_url, candidate_url }`
+  - `GET /api/resolve/:token` → `SessionService::resolveToken($params['token'])` → 200 `{ role, session_id }` veya 404
+  - `GET /api/sessions/:id` → `SessionService::getSession($params['id'])` → 200 veya 404
+  - `PATCH /api/sessions/:id` → body `{ status: 'active'|'ended' }` → `startSession` veya `endSession` çağır → 200
+  - `GET /api/sessions/:id/report` → `ReportService::generate($params['id'])` → 200
+
+### Task 4.4 — Question Routes
+**File**: `packages/backend/src/Routes/QuestionRoutes.php`
+- `class QuestionRoutes`
+  - `public static function register(Router $router): void`
+  - `GET /api/questions/bank` → tüm question'ları döner (question tablosu)
+  - `GET /api/sessions/:id/questions` → session'a atanmış question'ları döner (session_questions join)
+  - `POST /api/sessions/:id/questions` → body `{ question_id }` → session_questions'a ekler → 201
+  - `DELETE /api/sessions/:id/questions/:qid` → session_questions'dan siler → 204
+
+### Task 4.5 — Evaluation Routes
+**File**: `packages/backend/src/Routes/EvaluationRoutes.php`
+- `class EvaluationRoutes`
+  - `public static function register(Router $router): void`
+  - `PUT /api/sessions/:sid/questions/:qid/evaluation` → body `{ criteria_scores, notes }` → UPSERT evaluation → 200
+  - `GET /api/sessions/:sid/evaluations` → session'ın tüm evaluation'larını döner → 200
+
+---
+
+## Phase 5: PHP Backend — Models
+
+### Task 5.1 — Question Model
+**File**: `packages/backend/src/Models/Question.php`
+- `class Question`
+  - `public function findAll(): array` — tüm soruları döner
+  - `public function findById(string $id): ?array`
+  - `public function findBySessionId(string $sessionId): array` — session_questions JOIN questions
+  - `public function addToSession(string $sessionId, string $questionId, int $sortOrder): void`
+  - `public function removeFromSession(string $sessionId, string $questionId): void`
+
+### Task 5.2 — Evaluation Model
+**File**: `packages/backend/src/Models/Evaluation.php`
+- `class Evaluation`
+  - `public function upsert(string $sessionId, string $questionId, string $criteriaScoresJson, string $notes): void` — INSERT OR REPLACE
+  - `public function findBySession(string $sessionId): array`
+  - `public function findBySessionAndQuestion(string $sessionId, string $questionId): ?array`
+
+### Task 5.3 — CodeSnapshot Model
+**File**: `packages/backend/src/Models/CodeSnapshot.php`
+- `class CodeSnapshot`
+  - `public function save(string $sessionId, string $questionId, string $code, bool $isSubmission): string` — INSERT, ID döner
+  - `public function findBySession(string $sessionId): array`
+  - `public function findLatestByQuestion(string $sessionId, string $questionId): ?array`
+
+---
+
+## Phase 6: PHP Backend — Services
+
+### Task 6.1 — Question Service
+**File**: `packages/backend/src/Services/QuestionService.php`
+- `class QuestionService`
+  - `private Question $model`
+  - `public function getBank(): array` — tüm soru bankasını döner
+  - `public function getSessionQuestions(string $sessionId): array` — session'ın sorularını döner, `test_cases` ve `evaluation_criteria` JSON decode edilmiş
+  - `public function assignToSession(string $sessionId, string $questionId): void`
+  - `public function removeFromSession(string $sessionId, string $questionId): void`
+
+### Task 6.2 — Evaluation Service
+**File**: `packages/backend/src/Services/EvaluationService.php`
+- `class EvaluationService`
+  - `private Evaluation $model`
+  - `public function saveEvaluation(string $sessionId, string $questionId, array $criteriaScores, string $notes): void` — JSON encode edip model'e geçir
+  - `public function getSessionEvaluations(string $sessionId): array` — JSON decode edilmiş evaluation listesi
+
+### Task 6.3 — Report Service
 **File**: `packages/backend/src/Services/ReportService.php`
-- Aggregate: per-question scores, notes, total score, time spent per question
-- Include final code snapshots
-- Export as JSON (later: PDF)
-
-### Task 7.3 — Responsive design
-- Mobile/tablet breakpoints following `jotform-theme.css` patterns
-- Collapsible sidebar on smaller screens
-- Touch-friendly controls
-
-### Task 7.4 — Keyboard shortcuts
-- `Ctrl+Enter` / `Cmd+Enter`: Run code
-- `Ctrl+S` / `Cmd+S`: Save snapshot
-- `Ctrl+Shift+T`: Toggle between Output/Errors tabs
+- `class ReportService`
+  - `public function generate(string $sessionId): array` — Döner:
+    ```
+    {
+      session: { id, status, candidate_name, duration_seconds, started_at, ended_at },
+      questions: [{
+        id, title, difficulty,
+        evaluation: { criteria_scores, notes, total_score, max_score },
+        final_code: string
+      }],
+      summary: { total_score, max_possible_score, percentage, question_count }
+    }
+    ```
+  - Session + questions + evaluations + code_snapshots hepsini birleştirir
 
 ---
 
-## Implementation Order (Suggested)
+## Phase 7: PHP Backend — WebSocket Server
 
-1. **Phase 1** — Shared types + scaffolding (foundation)
-2. **Phase 2.1–2.4** — Header, Sidebars, Editor (visual shell)
-3. **Phase 3.1** — PHP-WASM integration (core value prop)
-4. **Phase 2.5–2.6** — Toolbar + Output panel (complete single-user flow)
-5. **Phase 4.1–4.2** — WebSocket client + server (enable real-time)
-6. **Phase 4.3–4.4** — Cursor + code sync (collaborative editing)
-7. **Phase 5** — REST API + database (persistence)
-8. **Phase 6** — State management + page layouts (full integration)
-9. **Phase 3.2–3.3** — Multi-language + test runner (extend execution)
-10. **Phase 7** — Polish, seed data, reports
+### Task 7.1 — Connection Manager
+**File**: `packages/backend/src/WebSocket/ConnectionManager.php`
+- `class ConnectionManager`
+  - `private array $rooms = []` — `[sessionId => [connectionId => ['conn' => ConnectionInterface, 'role' => string]]]`
+  - `public function addToRoom(string $sessionId, string $role, ConnectionInterface $conn): void` — room'a ekler, max 2 kişi kontrolü
+  - `public function removeConnection(ConnectionInterface $conn): ?array` — connection'ı bulur, room'dan çıkarır, `['session_id' => ..., 'role' => ...]` döner
+  - `public function getRoomPeer(string $sessionId, ConnectionInterface $self): ?ConnectionInterface` — aynı room'daki diğer kişiyi döner
+  - `public function broadcast(string $sessionId, string $message, ?ConnectionInterface $except = null): void` — room'daki herkese (except hariç) gönderir
+  - `public function isRoomActive(string $sessionId): bool` — room'da en az 1 connection var mı
+
+### Task 7.2 — Message Handler
+**File**: `packages/backend/src/WebSocket/MessageHandler.php`
+- `class MessageHandler`
+  - `private ConnectionManager $connections`
+  - `public function handle(ConnectionInterface $from, string $rawMessage): void` — JSON decode, `type` field'a göre dispatch:
+    - `JOIN_SESSION`: `TokenService::resolveToken(payload.token)` → role al, `ConnectionManager::addToRoom()`, diğer participant'a `PEER_JOINED` gönder
+    - `CODE_CHANGE`: payload `{ code }` → room peer'a forward et
+    - `CURSOR_MOVE`: payload `{ line, column }` → room peer'a forward et
+    - `SET_QUESTION`: (sadece interviewer) payload `{ question_id }` → candidate'e forward et
+    - `RUN_CODE`: payload `{ code }` → `CodeRunner::execute()` → sonucu gönderene `CODE_OUTPUT` olarak dön
+    - `SUBMIT_CODE`: payload `{ code, question_id }` → `CodeSnapshot::save()` ile kaydet, interviewer'a notify et
+    - `EVALUATION_UPDATE`: (sadece interviewer) → DB'ye kaydet
+  - `public function handleDisconnect(ConnectionInterface $conn): void` — `ConnectionManager::removeConnection()`, peer'a `PEER_LEFT` gönder
+
+### Task 7.3 — Ratchet WS Server
+**File**: `packages/backend/src/WebSocket/Server.php`
+- `class InterviewWebSocket implements MessageComponentInterface`
+  - `private MessageHandler $handler`
+  - `public function onOpen(ConnectionInterface $conn): void` — log
+  - `public function onMessage(ConnectionInterface $from, $msg): void` — `$this->handler->handle($from, $msg)`
+  - `public function onClose(ConnectionInterface $conn): void` — `$this->handler->handleDisconnect($conn)`
+  - `public function onError(ConnectionInterface $conn, \Exception $e): void` — log, close
+
+### Task 7.4 — Server entry point
+**File**: `packages/backend/bin/server.php`
+- `require __DIR__ . '/../vendor/autoload.php'`
+- `Database::init()`
+- Ratchet `IoServer` + `HttpServer` + `WsServer` oluştur
+- Port: `8080` (WS)
+- `echo "WebSocket server running on ws://0.0.0.0:8080\n"`
+- `$server->run()`
+
+---
+
+## Phase 8: Frontend — Backend Integration
+
+### Task 8.1 — WebSocket client hook
+**File**: `packages/frontend/src/hooks/useWebSocket.ts`
+- `function useWebSocket(token: string)`
+  - `ws://localhost:8080` adresine bağlan
+  - Bağlanınca `JOIN_SESSION` gönder: `{ type: 'JOIN_SESSION', payload: { token } }`
+  - Auto-reconnect: exponential backoff (1s, 2s, 4s, max 30s)
+  - Offline message queue: bağlantı yokken gönderilen mesajları tamponla
+  - Return: `{ sendMessage, lastMessage, status: 'connecting'|'connected'|'disconnected' }`
+
+### Task 8.2 — Session context
+**File**: `packages/frontend/src/contexts/SessionContext.tsx`
+- `SessionProvider` component
+  - Mount'ta: `GET /api/resolve/:token` → role + session_id al
+  - `GET /api/sessions/:sessionId` → session detayları
+  - `GET /api/sessions/:sessionId/questions` → soru listesi
+  - WebSocket hook'u başlat
+  - Context value: `{ session, questions, currentQuestion, role, ws, setCurrentQuestion }`
+
+### Task 8.3 — Editor context
+**File**: `packages/frontend/src/contexts/EditorContext.tsx`
+- `EditorProvider` component
+  - State: `code`, `isRunning`, `output`, `error`
+  - `handleCodeChange(newCode)`: local state güncelle + WS `CODE_CHANGE` gönder (150ms debounce)
+  - Incoming `CODE_CHANGE` → code state güncelle (send loop'u tetiklemeden)
+  - `handleRun()`: WS `RUN_CODE` gönder, `isRunning = true`, `CODE_OUTPUT` gelince güncelle
+  - `handleSubmit()`: WS `SUBMIT_CODE` gönder
+
+### Task 8.4 — Frontend token resolver'ı backend'e bağla
+**File**: `packages/frontend/src/App.tsx`
+- `resolveRole()` fonksiyonunu `GET /api/resolve/:token` API call'a çevir
+- Demo token sabitlerini kaldır
+
+---
+
+## Phase 9: PHP-WASM — In-Browser Code Execution
+
+### Task 9.1 — PHP-WASM integration
+**File**: `packages/frontend/src/services/phpWasm.ts`
+- `seanmorris/php-wasm` paketini kullan
+- `initPhp(): Promise<void>` — WASM binary'yi yükle (sayfa açıldığında)
+- `runPhp(code: string, stdin?: string): Promise<{ stdout: string, stderr: string, exitCode: number }>` — kodu çalıştır
+- 10 saniye timeout (infinite loop protection)
+- `<?php` tag'i yoksa otomatik ekle
+
+### Task 9.2 — Test case runner
+**File**: `packages/frontend/src/services/testRunner.ts`
+- `runTests(code: string, testCases: TestCase[]): Promise<TestResult[]>`
+  - Her test case için `runPhp(code, testCase.input)` çağır
+  - stdout'u trim edip `expected_output` ile karşılaştır
+  - Döner: `{ passed, input, expected, actual, executionTimeMs }[]`
+- `getTestSummary(results: TestResult[]): string` — `"3/5 test passed"`
+
+---
+
+## Phase 10: Question Bank Seed Data
+
+### Task 10.1 — Seed questions
+**File**: `packages/backend/seeds/questions.json`
+- 10 PHP coding sorusu:
+  1. Two Sum (easy, Arrays)
+  2. Valid Parentheses (easy, Strings)
+  3. Reverse Linked List (easy, Linked Lists)
+  4. Merge Two Sorted Arrays (easy, Arrays)
+  5. FizzBuzz (easy, Basics)
+  6. Binary Search (medium, Arrays)
+  7. Merge Intervals (medium, Arrays)
+  8. Group Anagrams (medium, Strings)
+  9. LRU Cache (hard, Design)
+  10. Longest Substring Without Repeating Characters (medium, Strings)
+- Her soru: `{ id, title, description, difficulty, category, template_code, test_cases: [{input, expected_output, is_hidden}], evaluation_criteria: [{id, label, max_score}] }`
+
+### Task 10.2 — Seed loader script
+**File**: `packages/backend/bin/seed.php`
+- `require autoload`
+- `Database::init()`
+- `questions.json` oku, her question'ı INSERT OR IGNORE ile DB'ye yaz
+- `echo "Seeded X questions\n"`
+
+---
+
+## Phase 11: Report & Session End
+
+### Task 11.1 — Report endpoint tamamla
+- `GET /api/sessions/:id/report` → `ReportService::generate()`
+- JSON rapor döner (Phase 6.3'teki format)
+
+### Task 11.2 — End Session akışı
+- Interviewer "End Session" tıklar → frontend `PATCH /api/sessions/:id { status: 'ended' }` gönderir
+- Backend: session status günceller, WS üzerinden `SESSION_ENDED` broadcast eder
+- Candidate ekranında: editor read-only olur, "Mülakat sona erdi" mesajı görünür
+- Interviewer: rapor sayfasına yönlendirilir
+
+---
+
+## Implementation Order
+
+```
+Phase 1  ✅ Frontend UI (DONE)
+Phase 2  → Backend scaffolding (composer, DB config, schema)
+Phase 3  → Token & Session services (core auth)
+Phase 4  → REST API (router, endpoints)
+Phase 5  → Models (Question, Evaluation, CodeSnapshot)
+Phase 6  → Services (Question, Evaluation, Report)
+Phase 7  → WebSocket server (Ratchet, rooms, messages)
+Phase 8  → Frontend ↔ Backend integration
+Phase 9  → PHP-WASM in-browser execution
+Phase 10 → Question bank seed data
+Phase 11 → Report & session end flow
+```
