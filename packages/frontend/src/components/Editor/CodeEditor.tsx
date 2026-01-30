@@ -1,13 +1,13 @@
 import Editor from '@monaco-editor/react';
 import EditorToolbar from './EditorToolbar';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 const LANGUAGE_MAP: Record<string, string> = {
-  php: 'php',
+  PHP: 'php',
 };
 
 const DEFAULT_CODE: Record<string, string> = {
-  php: '<?php\n// Write your solution here\nfunction solution() {\n  \n}\n',
+  PHP: '<?php\n// Write your solution here\nfunction solution() {\n  \n}\n',
 };
 
 interface CodeEditorProps {
@@ -17,22 +17,70 @@ interface CodeEditorProps {
 }
 
 export default function CodeEditor({ onRun, onSubmit, showSubmit }: CodeEditorProps) {
-  const [language, setLanguage] = useState('php');
-  const [code, setCode] = useState(DEFAULT_CODE['php'] ?? '');
+  const [language, setLanguage] = useState('PHP');
+  const [code, setCode] = useState(DEFAULT_CODE['PHP'] ?? '');
+  const [editorWidth, setEditorWidth] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     setCode(DEFAULT_CODE[lang] ?? `// ${lang}\n`);
   };
 
+  const handleClear = () => {
+    setCode(DEFAULT_CODE[language] ?? '');
+  };
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const startX = e.clientX;
+    const startWidth = containerRef.current?.getBoundingClientRect().width ?? 500;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      const newWidth = Math.min(
+        Math.max(startWidth + (ev.clientX - startX), 350),
+        1200
+      );
+      setEditorWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      dragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
+
   return (
-    <div className="editor-container" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div
+      ref={containerRef}
+      className="editor-container"
+      style={{
+        flex: editorWidth ? 'none' : 1,
+        width: editorWidth ?? undefined,
+        minWidth: 350,
+        maxWidth: 1200,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+      }}
+    >
       <EditorToolbar
         language={language}
         languages={Object.keys(LANGUAGE_MAP)}
         onLanguageChange={handleLanguageChange}
         onRun={() => onRun?.(code, language)}
-        onClear={() => setCode('')}
+        onClear={handleClear}
         onSubmit={showSubmit ? () => onSubmit?.(code, language) : undefined}
       />
       <div className="editor-header">
@@ -55,6 +103,8 @@ export default function CodeEditor({ onRun, onSubmit, showSubmit }: CodeEditorPr
           tabSize: 4,
         }}
       />
+      {/* Drag handle */}
+      <div className="resize-handle resize-handle--right" onMouseDown={handleMouseDown} />
     </div>
   );
 }

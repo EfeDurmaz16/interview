@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS questions (
     test_cases TEXT NOT NULL DEFAULT '[]',    -- JSON: [{input, expected_output, is_hidden}]
     evaluation_criteria TEXT NOT NULL DEFAULT '[]', -- JSON: [{id, label, max_score}]
     sort_order INTEGER NOT NULL DEFAULT 0
+    session_id TEXT NOT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS session_questions (
@@ -468,7 +469,7 @@ CREATE TABLE IF NOT EXISTS code_snapshots (
   8. Group Anagrams (medium, Strings)
   9. LRU Cache (hard, Design)
   10. Longest Substring Without Repeating Characters (medium, Strings)
-- Her soru: `{ id, title, description, difficulty, category, template_code, test_cases: [{input, expected_output, is_hidden}], evaluation_criteria: [{id, label, max_score}] }`
+- Her soru: `{ id, title, description, difficulty, category, template_code, test_cases: [{input, expected_output, is_hidden}], evaluation_criteria: [{id, label, max_score}], session_id }`
 
 ### Task 10.2 — Seed loader script
 **File**: `packages/backend/bin/seed.php`
