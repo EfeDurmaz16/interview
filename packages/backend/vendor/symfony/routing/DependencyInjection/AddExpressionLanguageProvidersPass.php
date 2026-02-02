@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\Reference;
  * Registers the expression language providers.
  *
  * @author Fabien Potencier <fabien@symfony.com>
- */
+ */ 
 class AddExpressionLanguageProvidersPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void
