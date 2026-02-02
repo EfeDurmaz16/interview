@@ -20,6 +20,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "cp ../../node_modules/php-wasm/php-web.mjs.wasm public/php-web.mjs.wasm || true"
   }
+
 }

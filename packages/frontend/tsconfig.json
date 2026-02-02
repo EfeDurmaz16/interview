@@ -19,5 +19,5 @@
     "types": ["vite/client"],
     "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "src/types"]
 }

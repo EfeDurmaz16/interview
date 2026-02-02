@@ -498,10 +498,10 @@ CREATE TABLE IF NOT EXISTS code_snapshots (
 
 ```
 Phase 1  ✅ Frontend UI (DONE)
-Phase 2  → Backend scaffolding (composer, DB config, schema)
-Phase 3  → Token & Session services (core auth)
+Phase 2  ✅ Backend scaffolding (composer, DB config, schema)
+Phase 3  ✅ Token & Session services (core auth)
 Phase 4  → REST API (router, endpoints)
-Phase 5  → Models (Question, Evaluation, CodeSnapshot)
+Phase 5  ✅ Models (Question, Evaluation, CodeSnapshot)
 Phase 6  → Services (Question, Evaluation, Report)
 Phase 7  → WebSocket server (Ratchet, rooms, messages)
 Phase 8  → Frontend ↔ Backend integration
