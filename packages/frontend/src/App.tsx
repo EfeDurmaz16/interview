@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import InterviewPage from './pages/InterviewPage';
+import { runPhp } from "./services/phpWasm"; // path senin projene göre ayarla
+
 
 // Demo tokens — in production these come from the backend
 // Each session has 2 tokens: one maps to interviewer, one to candidate
@@ -12,6 +14,7 @@ export function resolveRole(token: string): 'interviewer' | 'candidate' | null {
   // In production: GET /api/session/resolve?token=xxx → { role, sessionId }
   return DEMO_TOKENS[token] ?? null;
 }
+
 
 export default function App() {
   return (
