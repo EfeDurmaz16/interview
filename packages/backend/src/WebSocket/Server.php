@@ -67,4 +67,46 @@ class Server implements MessageComponentInterface {
     }
 }
 
+class InterviewWebSocket implements MessageComponentInterface {
+    private MessageHandler $handler;
+
+    public function __construct() {
+        $this->handler = new MessageHandler(new ConnectionManager());
+    }
+    
+    public function onOpen(ConnectionInterface $conn): void {
+        $sessionId = '';
+        $userId = '';
+        $role = '';
+
+        // Extract session context from WebSocket HTTP handshake query parameters if available.
+        if (property_exists($conn, 'httpRequest')) {
+            $request = $conn->httpRequest;
+
+            // Ratchet uses Symfony Request; safely read query params when possible.
+            if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
+                $sessionId = (string) $request->query->get('sessionId', '');
+                $userId = (string) $request->query->get('userId', '');
+                $role = (string) $request->query->get('role', '');
+            }
+        }
+
+        $this->handler->handleOpen($conn, $sessionId, $userId, $role);
+    }
+
+    public function onMessage(ConnectionInterface $from, $msg) {
+        $this->handler->handleMessage($from, $msg);
+    }
+    
+    public function onClose(ConnectionInterface $conn) {
+        $this->handler->handleClose($conn);
+    }
+
+    public function onError(ConnectionInterface $conn, \Exception $e) {
+        $this->handler->handleError($conn, $e);
+    }
+
+
+}
+
 ?>
