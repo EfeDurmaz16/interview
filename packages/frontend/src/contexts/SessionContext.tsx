@@ -1,7 +1,9 @@
 import type { Question, Session, Role } from '@jotform-interview/shared';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 
-const SessionContext = createContext<{
+export const [sessionContext, setSessionContext] = useState<Session | null>(null);
+
+export const SessionContext = createContext<{
   session: Session | null;
   questions: Question[];
   currentQuestion: Question | null;

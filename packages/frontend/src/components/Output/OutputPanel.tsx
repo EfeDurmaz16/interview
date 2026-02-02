@@ -25,7 +25,7 @@ export default function OutputPanel({
 }: OutputPanelProps) {
   const [tab, setTab] = useState<'output' | 'errors'>('output');
 
-  
+   
   return (
     <div className="output-panel">
       <div className="output-tabs">
@@ -45,10 +45,7 @@ export default function OutputPanel({
 
       <div className={`output-content${!output && !error ? ' output-content--empty' : ''}${tab === 'errors' && error ? ' output-content--error' : ''}`}>
         {tab === 'output' ? (
-          <>
-            {output || 'Run your code to see output here...'}
-            {error || 'No errors.'}
-          </>
+          output || 'Run your code to see output here...'
         ) : (
           error || 'No errors.'
         )}

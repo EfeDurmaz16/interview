@@ -1,6 +1,7 @@
 import { useWebSocket } from "./useWebSocket";
 import { WSMessageType } from "@jotform-interview/shared";
 
+
 export function useCodeSync(token: string) {
   const { sendMessage, lastMessage, status } = useWebSocket(token);
 

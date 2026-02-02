@@ -32,6 +32,7 @@ class ConnectionManager {
     }
 
     public function broadcast(string $sessionId, string $message, ?ConnectionInterface $except = null): void {
+        if (!isset($this->rooms[$sessionId])) return;
         foreach ($this->rooms[$sessionId] as $connectionId => $connection) {
             if ($connection['conn'] !== $except) {
                 $connection['conn']->send($message);

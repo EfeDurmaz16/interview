@@ -6,6 +6,7 @@ export type PhpRunResult = {
 
 let php: any = null;
 let initPromise: Promise<void> | null = null;
+let PhpWebClass: any = null;
 
 
 function normalizePhp(code: string): string {
@@ -26,9 +27,9 @@ export async function initPhp(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const { PhpWeb } = await import( "https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs");
-
-    php =  new PhpWeb();
+    const { PhpWeb } = await import("https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs");
+    PhpWebClass = PhpWeb;
+    php = new PhpWeb();
 
     await new Promise<void>((resolve) => {
       const onReady = () => {
@@ -50,7 +51,17 @@ export async function runPhp(
   
   await initPhp();
 
-  if (!php) throw new Error("PHP not initialized");
+  if (!PhpWebClass) throw new Error("PHP not initialized");
+
+  // Create fresh instance to avoid "Cannot redeclare" errors
+  php = new PhpWebClass();
+  await new Promise<void>((resolve) => {
+    const onReady = () => {
+      php.removeEventListener("ready", onReady);
+      resolve();
+    };
+    php.addEventListener("ready", onReady);
+  });
 
   const stdout: string[] = [];
   const stderr: string[] = [];

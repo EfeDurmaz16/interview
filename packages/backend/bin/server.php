@@ -2,6 +2,8 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../src/Config/Database.php';
+require __DIR__ . '/../src/Models/Token.php';
+require __DIR__ . '/../src/Services/TokenService.php';
 require __DIR__ . '/../src/WebSocket/Server.php';
 
 use Ratchet\Server\IoServer;

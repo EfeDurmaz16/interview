@@ -34,7 +34,7 @@ cd ../..
 cd packages/backend
 php bin/seed.php
 cd ../..
-```
+``
 
 ### Çalıştırma
 

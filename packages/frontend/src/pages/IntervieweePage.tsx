@@ -2,10 +2,11 @@ import Header from '../components/Header/Header';
 import IntervieweeSidebar from '../components/Sidebar/IntervieweeSidebar';
 import CodeEditor from '../components/Editor/CodeEditor';
 import OutputPanel from '../components/Output/OutputPanel';
-import { useState } from 'react';
+import { EditorProvider, useEditor } from '../contexts/EditorContext';
+import { useParams } from 'react-router-dom';
 
-export default function IntervieweeView() {
-  const [output, setOutput] = useState('');
+function IntervieweeContent() {
+  const { code, output, error, isRunning, executionTime, handleCodeChange, handleRun, handleSubmit } = useEditor();
 
   return (
     <>
@@ -15,12 +16,24 @@ export default function IntervieweeView() {
         <div className="center-panel">
           <CodeEditor
             showSubmit
-            onRun={(code) => setOutput(`> Running...\n${code.slice(0, 100)}...`)}
-            onSubmit={(code, lang) => setOutput(`Submitted ${lang} solution (${code.length} chars)`)}
+            externalCode={code}
+            onCodeChange={handleCodeChange}
+            onRun={handleRun}
+            onSubmit={handleRun}
           />
-          <OutputPanel output={output} />
+          <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>
       </div>
     </>
+  );
+}
+
+export default function IntervieweeView() {
+  const { token } = useParams<{ token: string }>();
+
+  return (
+    <EditorProvider token={token ?? ''}>
+      <IntervieweeContent />
+    </EditorProvider>
   );
 }

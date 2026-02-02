@@ -10,12 +10,14 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useCodeSync } from '../hooks/useCodeSync';
 import { WSMessageType } from '@jotform-interview/shared';
+import { runPhp } from '../services/phpWasm';
 
 const EditorContext = createContext<{
   code: string;
   isRunning: boolean;
   output: string;
   error: string;
+  executionTime: number | undefined;
   handleCodeChange: (newCode: string) => void;
   handleRun: () => void;
   handleSubmit: (questionId: string) => void;
@@ -34,6 +36,7 @@ export function EditorProvider({
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
+  const [executionTime, setExecutionTime] = useState<number | undefined>();
 
   const { sendCodeChange, sendRun, sendSubmit, lastMessage } = useCodeSync(token);
   const debounceTimeoutRef = useRef<number | null>(null);
@@ -78,12 +81,26 @@ export function EditorProvider({
     }, 150);
   }, [sendCodeChange]);
 
-  // handleRun: WS RUN_CODE gönder, isRunning = true, CODE_OUTPUT gelince güncelle
-  const handleRun = useCallback(() => {
+  // handleRun: run PHP locally + broadcast output via WS
+  const handleRun = useCallback(async () => {
     setIsRunning(true);
     setError('');
     setOutput('');
+    setExecutionTime(undefined);
     sendRun(code);
+    const start = performance.now();
+    try {
+      const result = await runPhp(code);
+      const elapsed = Math.round(performance.now() - start);
+      setExecutionTime(elapsed);
+      setOutput(result.stdout);
+      setError(result.stderr);
+    } catch (e: any) {
+      setExecutionTime(Math.round(performance.now() - start));
+      setError(e.message ?? 'Execution failed');
+    } finally {
+      setIsRunning(false);
+    }
   }, [code, sendRun]);
 
   // handleSubmit: WS SUBMIT_CODE gönder
@@ -106,14 +123,15 @@ export function EditorProvider({
 
   return (
     <EditorContext.Provider 
-      value={{ 
-        code, 
-        isRunning, 
-        output, 
-        error, 
-        handleCodeChange, 
-        handleRun, 
-        handleSubmit 
+      value={{
+        code,
+        isRunning,
+        output,
+        error,
+        executionTime,
+        handleCodeChange,
+        handleRun,
+        handleSubmit
       }}
     >
       {children}

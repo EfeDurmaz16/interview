@@ -4,6 +4,8 @@ import InterviewerSidebar from '../components/Sidebar/InterviewerSidebar';
 import CodeEditor from '../components/Editor/CodeEditor';
 import OutputPanel from '../components/Output/OutputPanel';
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { EditorProvider, useEditor } from '../contexts/EditorContext';
 
 type NavPermission = 'none' | 'prev_only' | 'both';
 
@@ -44,7 +46,17 @@ interface InterviewerViewProps {
 }
 
 export default function InterviewerView({ onEndSession, candidateToken }: InterviewerViewProps) {
-  const [output, setOutput] = useState('');
+  const { token } = useParams<{ token: string }>();
+
+  return (
+    <EditorProvider token={token ?? ''}>
+      <InterviewerContent onEndSession={onEndSession} candidateToken={candidateToken} />
+    </EditorProvider>
+  );
+}
+
+function InterviewerContent({ onEndSession, candidateToken }: InterviewerViewProps) {
+  const { code, output, error, isRunning, executionTime, handleCodeChange, handleRun } = useEditor();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [navPermission, setNavPermission] = useState<NavPermission>('none');
   const [copied, setCopied] = useState(false);
@@ -108,8 +120,8 @@ export default function InterviewerView({ onEndSession, candidateToken }: Interv
       <div className="interview-layout">
         <InterviewerSidebar />
         <div className="center-panel">
-          <CodeEditor onRun={(code) => setOutput(`> Running...\n${code.slice(0, 100)}...`)} />
-          <OutputPanel output={output} />
+          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} />
+          <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>
         <div className="right-panel">
           {/* Navigation Permission */}
