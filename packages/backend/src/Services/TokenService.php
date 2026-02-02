@@ -8,18 +8,33 @@ class TokenService{
     public function createSessionTokens(string $sessionId): array {
         $interviewerToken = $this->generateToken('int');
         $candidateToken = $this->generateToken('cnd');
-        $tokens = [
+
+        $tokenModel = new Token();
+        $tokenModel->insert($interviewerToken, $sessionId, 'interviewer');
+        $tokenModel->insert($candidateToken, $sessionId, 'candidate');
+
+        return [
             'interviewer_token' => $interviewerToken,
             'candidate_token' => $candidateToken
         ];
-        return $tokens;
     }
 
     public function resolveToken(string $token): ?array {
         $db = Database::getConnection();
         $stmt = $db->prepare('SELECT * FROM tokens WHERE token = ?');
         $stmt->execute([$token]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$result) return null;
+
+        // Include the other role's token for sharing
+        $stmt2 = $db->prepare('SELECT token, role FROM tokens WHERE session_id = ? AND token != ?');
+        $stmt2->execute([$result['session_id'], $token]);
+        $other = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if ($other) {
+            $result['other_token'] = $other['token'];
+            $result['other_role'] = $other['role'];
+        }
+        return $result;
     }
 
     public function invalidateSessionTokens(string $sessionId): void {

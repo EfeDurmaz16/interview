@@ -40,18 +40,71 @@ const NAV_OPTIONS: { value: NavPermission; label: string; desc: string }[] = [
 
 interface InterviewerViewProps {
   onEndSession: () => void;
+  candidateToken?: string;
 }
 
-export default function InterviewerView({ onEndSession }: InterviewerViewProps) {
+export default function InterviewerView({ onEndSession, candidateToken }: InterviewerViewProps) {
   const [output, setOutput] = useState('');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [navPermission, setNavPermission] = useState<NavPermission>('none');
+  const [copied, setCopied] = useState(false);
+
+  const candidateUrl = candidateToken
+    ? `${window.location.origin}/interview/${candidateToken}`
+    : null;
+
+  const copyLink = () => {
+    if (!candidateUrl) return;
+    navigator.clipboard.writeText(candidateUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const toggle = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <>
       <Header candidateName="Candidate" showTimer showEndSession onEndSession={onEndSession} />
+      {candidateUrl && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.5rem 1rem',
+          background: 'var(--jotform-bg-light, #f5f5f5)',
+          borderBottom: '1px solid var(--jotform-border, #e0e0e0)',
+          fontSize: '0.8125rem',
+        }}>
+          <span style={{ fontWeight: 600 }}>Aday Davet Linki:</span>
+          <code style={{
+            flex: 1,
+            padding: '0.25rem 0.5rem',
+            background: 'var(--jotform-bg, #fff)',
+            border: '1px solid var(--jotform-border, #e0e0e0)',
+            borderRadius: 4,
+            fontSize: '0.75rem',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>{candidateUrl}</code>
+          <button
+            onClick={copyLink}
+            style={{
+              padding: '0.25rem 0.75rem',
+              borderRadius: 4,
+              border: 'none',
+              background: copied ? 'var(--jotform-success, #28a745)' : 'var(--jotform-primary, #0075ff)',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {copied ? 'Kopyalandi!' : 'Kopyala'}
+          </button>
+        </div>
+      )}
       <div className="interview-layout">
         <InterviewerSidebar />
         <div className="center-panel">

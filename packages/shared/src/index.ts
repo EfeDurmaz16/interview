@@ -6,6 +6,7 @@ export enum WSMessageType {
     SET_QUESTION = 'set_question',
     RUN_CODE = 'run_code',
     CODE_OUTPUT = 'code_output',
+    SUBMIT_CODE = 'submit_code',
     EVALUATION_UPDATE = 'evaluation_update',
 }
 
@@ -53,4 +54,9 @@ interface Session{
     endTime: number;
 }
 
-export type { WSMessage, Question, TestCase, EvaluationCriterion, Session };
+interface Role{
+    id: string;
+    name: "interviewer" | "interviewee";
+}
+
+export type { WSMessage, Question, TestCase, EvaluationCriterion, Session, Role };

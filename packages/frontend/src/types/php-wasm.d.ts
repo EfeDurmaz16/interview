@@ -1,4 +1,4 @@
-declare module "php-wasm/PhpWeb.mjs" {
+declare module "https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs"{
   export class PhpWeb {
     constructor();
 

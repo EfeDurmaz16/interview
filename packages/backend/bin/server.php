@@ -7,15 +7,21 @@ require __DIR__ . '/../src/WebSocket/Server.php';
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
-use React\Socket\ServerInterface;
+use React\Socket\Server as ReactServer;
+use React\EventLoop\Factory as LoopFactory;
 
 Database::init();
 
+$loop = LoopFactory::create();
+$socket = new ReactServer('0.0.0.0:8080', $loop);
+
 $server = new IoServer(
     new HttpServer(
-        new WsServer(new InterviewWebSocket())
+        new WsServer(new InterviewWebSocket()),
+        16384
     ),
-    new ServerInterface('0.0.0.0', 8080)
+    $socket,
+    $loop
 );
 
 echo "WebSocket server running on ws://0.0.0.0:8080\n";

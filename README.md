@@ -1,39 +1,112 @@
-# The Jotform Technical Interview Tool
+# Jotform Interview Platform
 
-This is a tool that allows you to create a technical interview for a job application.
+Interview platformu için monorepo yapısında React frontend ve PHP backend.
 
-## Features
+## 🚀 Hızlı Başlatma
 
-- Create a technical interview for a job application
-- Add questions to the interview -> Interviewer can add questions to the interview before interview 
-- Add evaluation criteria to the questions -> Interviewer can add evaluation criteria to the questions before interview
-- Add answers to the questions -> Interviewee can answer the questions
-- Add feedback to the answers -> Interviewer can add feedback to the answers
-- Add a score to the answers -> Interviewer can add a score to the answers
-- Add a report to the interview -> Interviewer can add a report to the interview
+### Gereksinimler
+- **Node.js** 18+ ve npm
+- **PHP** 8.1+ ve Composer
+- **SQLite3** (genellikle PHP ile birlikte gelir)
 
-## Tech Stack
+### Kurulum
 
-- React -> Monaco Editor
-- HTML
-- CSS
-- PHP
-- WebSocket for real-time communication between interviewer and interviewee
-- JS for the connection between the frontend and the backend
-- SQLite for the database
-
-## How to run the project
-
-Start the project with `php -S localhost:8000`
-
-Then run the following commands:
-
+1. **Bağımlılıkları yükle:**
 ```bash
-cd frontend
+# Root seviyesinde
 npm install
-npm start
+
+# Backend PHP bağımlılıkları
+cd packages/backend
+composer install
+cd ../..
 ```
 
-Then open the project in the browser at `http://localhost:3000`
+2. **Database'i başlat:**
+```bash
+cd packages/backend
+php -r "require 'vendor/autoload.php'; require 'src/Config/Database.php'; Database::init();"
+cd ../..
+```
 
+3. **Seed data (opsiyonel):**
+```bash
+cd packages/backend
+php bin/seed.php
+cd ../..
+```
 
+### Çalıştırma
+
+**3 terminal penceresi açın:**
+
+#### Terminal 1: PHP REST API Server
+```bash
+cd packages/backend/public
+php -S localhost:8000
+```
+
+#### Terminal 2: PHP WebSocket Server
+```bash
+cd packages/backend
+php bin/server.php
+```
+
+#### Terminal 3: Frontend Dev Server
+```bash
+npm run frontend
+# veya root'tan:
+npm run dev
+```
+
+### Erişim
+
+- **Frontend**: http://localhost:3000
+- **REST API**: http://localhost:8000/api
+- **WebSocket**: ws://localhost:8080
+
+## 📁 Proje Yapısı
+
+```
+interview/
+├── packages/
+│   ├── frontend/          # React + Vite + Monaco Editor
+│   ├── backend/            # PHP Backend (REST + WebSocket)
+│   └── shared/             # Shared TypeScript types
+```
+
+## 🔧 Geliştirme
+
+### Backend
+
+- **REST API**: `packages/backend/public/index.php`
+- **WebSocket**: `packages/backend/bin/server.php`
+- **Database**: SQLite (`packages/backend/database/interview.sqlite`)
+
+### Frontend
+
+- **Dev Server**: `npm run frontend` (port 3000)
+- **API Proxy**: Vite config'de `/api` → `localhost:8000`
+- **WebSocket**: Doğrudan `ws://localhost:8080` bağlanıyor
+
+## 📝 API Endpoints
+
+- `POST /api/sessions` - Yeni session oluştur
+- `GET /api/resolve/:token` - Token'dan role çözümle
+- `GET /api/sessions/:id` - Session detayları
+- `GET /api/sessions/:id/questions` - Session soruları
+- `PUT /api/sessions/:sid/questions/:qid/evaluation` - Değerlendirme kaydet
+
+## 🐛 Sorun Giderme
+
+### WebSocket bağlanmıyor
+- `php bin/server.php` çalışıyor mu kontrol et
+- Port 8080'in kullanılabilir olduğundan emin ol
+
+### Database hatası
+- `packages/backend/database/` klasörünün yazılabilir olduğundan emin ol
+- `Database::init()` çalıştırıldı mı kontrol et
+
+### CORS hatası
+- Backend'de CORS header'ları `public/index.php` içinde tanımlı
+- Frontend proxy ayarları `vite.config.ts` içinde kontrol et

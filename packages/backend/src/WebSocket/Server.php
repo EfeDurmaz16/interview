@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . "/../../vendor/autoload.php";
+require_once __DIR__ . "/ConnectionManager.php";
+require_once __DIR__ . "/MessageHandler.php";
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;

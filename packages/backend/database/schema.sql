@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS questions (
     template_code TEXT NOT NULL DEFAULT '',   -- PHP template
     test_cases TEXT NOT NULL DEFAULT '[]',    -- JSON: [{input, expected_output, is_hidden}]
     evaluation_criteria TEXT NOT NULL DEFAULT '[]', -- JSON: [{id, label, max_score}]
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    session_id TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 

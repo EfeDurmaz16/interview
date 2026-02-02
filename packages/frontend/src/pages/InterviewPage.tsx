@@ -1,12 +1,43 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { resolveRole } from '../App';
+import { useState, useEffect } from 'react';
+import { resolveToken, type ResolveResult } from '../App';
 import InterviewerView from './InterviewerPage';
 import IntervieweeView from './IntervieweePage';
 
 export default function InterviewPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const role = resolveRole(token ?? '');
+  const [resolveData, setResolveData] = useState<ResolveResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      const result = await resolveToken(token);
+      setResolveData(result);
+      setIsLoading(false);
+    };
+    fetchRole();
+  }, [token]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        color: 'var(--jotform-text)',
+      }}>
+        <p>Yükleniyor...</p>
+      </div>
+    );
+  }
+
+  const role = resolveData?.role ?? null;
 
   if (!role) {
     return (
@@ -34,7 +65,8 @@ export default function InterviewPage() {
   };
 
   if (role === 'interviewer') {
-    return <InterviewerView onEndSession={handleEndSession} />;
+    const candidateToken = resolveData?.other_role === 'candidate' ? resolveData.other_token : undefined;
+    return <InterviewerView onEndSession={handleEndSession} candidateToken={candidateToken} />;
   }
 
   return <IntervieweeView />;

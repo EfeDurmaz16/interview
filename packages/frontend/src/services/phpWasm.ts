@@ -7,6 +7,7 @@ export type PhpRunResult = {
 let php: any = null;
 let initPromise: Promise<void> | null = null;
 
+
 function normalizePhp(code: string): string {
   const trimmed = code.trimStart();
   return trimmed.startsWith("<?php") ? code : `<?php\n${code}`;
@@ -25,7 +26,6 @@ export async function initPhp(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    // 🔥 BURASI DEĞİŞTİ
     const { PhpWeb } = await import( "https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs");
 
     php =  new PhpWeb();

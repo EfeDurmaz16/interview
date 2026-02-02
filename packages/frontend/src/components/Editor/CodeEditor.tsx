@@ -76,6 +76,7 @@ export default function CodeEditor({ onRun, onSubmit, showSubmit }: CodeEditorPr
       }}
     >
       <EditorToolbar
+        code={code}
         language={language}
         languages={Object.keys(LANGUAGE_MAP)}
         onLanguageChange={handleLanguageChange}

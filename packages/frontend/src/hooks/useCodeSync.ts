@@ -1,37 +1,35 @@
-import { useEffect, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
 import { WSMessageType } from "@jotform-interview/shared";
-import { editor } from "monaco-editor";
 
-export function useCodeSync(sessionId: string, userId: string, role: 'interviewer' | 'interviewee') {
-    const { sendMessage, lastMessage } = useWebSocket(sessionId, userId, role);
+export function useCodeSync(token: string) {
+  const { sendMessage, lastMessage, status } = useWebSocket(token);
 
-    const [code, setCode] = useState<string>('');
-    const [version, setVersion] = useState<number>(0);
-    
-    
-    useEffect(() => {
-        if (lastMessage) {
-            console.log(lastMessage);
-        }
-    }, [lastMessage]);
+  const sendCodeChange = (code: string) => {
+    sendMessage({
+      type: WSMessageType.CODE_CHANGE,
+      payload: { code },
+    });
+  };
 
-    return {
-        sendCodeChange: (code: string) => {
-            sendMessage({ type: WSMessageType.CODE_CHANGE, sessionId, userId, role, timestamp: Date.now(), payload: code });
-        }
-    }
+  const sendRun = (code: string) => {
+    sendMessage({
+      type: WSMessageType.RUN_CODE,
+      payload: { code },
+    });
+  };
 
-    function onDidChangeModelContent(delta: any) {
-        sendMessage({ type: WSMessageType.CODE_CHANGE, sessionId, userId, role, timestamp: Date.now(), payload: delta });
-    }
+  const sendSubmit = (code: string, questionId: string) => {
+    sendMessage({
+      type: WSMessageType.SUBMIT_CODE,
+      payload: { code, question_id: questionId },
+    });
+  };
 
-    return {
-        onDidChangeModelContent
-    }
-
-    function applyEdits(code: string, edits: any[]) {
-        const newCode = editor.applyEdits(code, edits);
-        return newCode;
-    }
+  return {
+    sendCodeChange,
+    sendRun,
+    sendSubmit,
+    lastMessage,
+    status,
+  };
 }

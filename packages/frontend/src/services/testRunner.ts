@@ -1,4 +1,4 @@
-import {runPhp} from "./phpWasm.js";
+import {runPhp} from "./phpWasm";
 
 export type TestCase ={
   input: string;

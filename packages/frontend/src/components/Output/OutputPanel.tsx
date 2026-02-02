@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+
 interface TestResult {
   passed: boolean;
   input: string;
@@ -24,6 +25,7 @@ export default function OutputPanel({
 }: OutputPanelProps) {
   const [tab, setTab] = useState<'output' | 'errors'>('output');
 
+  
   return (
     <div className="output-panel">
       <div className="output-tabs">
@@ -45,22 +47,7 @@ export default function OutputPanel({
         {tab === 'output' ? (
           <>
             {output || 'Run your code to see output here...'}
-            {testResults.length > 0 && (
-              <div style={{ marginTop: '0.75rem' }}>
-                {testResults.map((t, i) => (
-                  <div key={i} className="test-result">
-                    <span className={`test-result__icon test-result__icon--${t.passed ? 'pass' : 'fail'}`}>
-                      {t.passed ? '✓' : '✗'}
-                    </span>
-                    <div className="test-result__details">
-                      <div>Input: {t.input}</div>
-                      <div>Expected: {t.expected}</div>
-                      <div>Actual: {t.actual}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {error || 'No errors.'}
           </>
         ) : (
           error || 'No errors.'

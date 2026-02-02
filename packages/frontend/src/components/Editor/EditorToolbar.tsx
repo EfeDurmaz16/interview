@@ -2,15 +2,17 @@ interface EditorToolbarProps {
   language: string;
   languages: string[];
   onLanguageChange: (lang: string) => void;
-  onRun: () => void;
+  code: string;
+  onRun: (code: string) => void;
   onClear: () => void;
-  onSubmit?: () => void;
+  onSubmit?: (code: string) => void;
 }
 
 export default function EditorToolbar({
   language,
   languages,
   onLanguageChange,
+  code,
   onRun,
   onClear,
   onSubmit,
@@ -34,9 +36,15 @@ export default function EditorToolbar({
       </div>
       <div className="toolbar__group" style={{ marginLeft: 'auto' }}>
         <button className="btn btn--secondary" onClick={onClear}>Clear</button>
-        <button className="btn btn--primary" onClick={onRun}>&#9654; Run Code</button>
+        {/* 
+          The previous code tried to use a variable `code` which is not defined in this component.
+          To fix this, you must pass the `code` prop down from the parent, then use it here.
+          For now, I'll assume a `code` prop exists and use it; 
+          if not, you should add `code: string` to EditorToolbarProps.
+        */}
+        <button className="btn btn--primary" onClick={() => onRun(code)}>&#9654; Run Code</button>
         {onSubmit && (
-          <button className="btn btn--primary" onClick={onSubmit} style={{ background: 'var(--jotform-blue)' }}>
+          <button className="btn btn--primary" onClick={() => onSubmit(code)} style={{ background: 'var(--jotform-blue)' }}>
             Submit
           </button>
         )}
