@@ -1,12 +1,10 @@
-import { PhpWeb } from "php-wasm/PhpWeb.mjs";
-
 export type PhpRunResult = {
   stdout: string;
   stderr: string;
   exitCode: number;
 };
 
-let php:PhpWeb | null = null;
+let php: any = null;
 let initPromise: Promise<void> | null = null;
 
 function normalizePhp(code: string): string {
@@ -26,16 +24,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export async function initPhp(): Promise<void> {
   if (initPromise) return initPromise;
 
-  initPromise = new Promise((resolve) => {
-    php = new PhpWeb();
+  initPromise = (async () => {
+    // 🔥 BURASI DEĞİŞTİ
+    const { PhpWeb } = await import( "https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs");
 
-    const onReady = () => {
-      php?.removeEventListener("ready", onReady);
-      resolve();
-    };
+    php =  new PhpWeb();
 
-    php.addEventListener("ready", onReady);
-  });
+    await new Promise<void>((resolve) => {
+      const onReady = () => {
+        php.removeEventListener("ready", onReady);
+        resolve();
+      };
+      php.addEventListener("ready", onReady);
+    });
+  })();
 
   return initPromise;
 }
@@ -45,6 +47,7 @@ export async function runPhp(
   stdin: string = "",
   timeoutMs = 10_000
 ): Promise<PhpRunResult> {
+  
   await initPhp();
 
   if (!php) throw new Error("PHP not initialized");

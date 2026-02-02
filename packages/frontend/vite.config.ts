@@ -13,4 +13,7 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    exclude: ["php-wasm"],   // ⭐⭐⭐ EN KRİTİK SATIR
+  },
 });

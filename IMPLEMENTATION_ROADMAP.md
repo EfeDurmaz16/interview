@@ -508,5 +508,3 @@ Phase 8  → Frontend ↔ Backend integration
 Phase 9  → PHP-WASM in-browser execution
 Phase 10 → Question bank seed data
 Phase 11 → Report & session end flow
-```
-
