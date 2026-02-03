@@ -66,8 +66,8 @@ export default function InterviewPage() {
 
   if (role === 'interviewer') {
     const candidateToken = resolveData?.other_role === 'candidate' ? resolveData.other_token : undefined;
-    return <InterviewerView onEndSession={handleEndSession} candidateToken={candidateToken} />;
+    return <InterviewerView onEndSession={handleEndSession} candidateToken={candidateToken} sessionId={resolveData!.session_id} />;
   }
 
-  return <IntervieweeView />;
+  return <IntervieweeView sessionId={resolveData!.session_id} />;
 }

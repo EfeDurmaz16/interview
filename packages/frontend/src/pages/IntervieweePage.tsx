@@ -5,12 +5,12 @@ import OutputPanel from '../components/Output/OutputPanel';
 import { EditorProvider, useEditor } from '../contexts/EditorContext';
 import { useParams } from 'react-router-dom';
 
-function IntervieweeContent() {
-  const { code, output, error, isRunning, executionTime, handleCodeChange, handleRun, handleSubmit } = useEditor();
+function IntervieweeContent({ sessionId }: { sessionId: string }) {
+  const { code, output, error, isRunning, executionTime, handleCodeChange, handleRun } = useEditor();
 
   return (
     <>
-      <Header showTimer />
+      <Header showTimer  sessionId={sessionId}/>
       <div className="interview-layout">
         <IntervieweeSidebar />
         <div className="center-panel">
@@ -28,12 +28,12 @@ function IntervieweeContent() {
   );
 }
 
-export default function IntervieweeView() {
+export default function IntervieweeView({ sessionId }: { sessionId: string }) {
   const { token } = useParams<{ token: string }>();
 
   return (
     <EditorProvider token={token ?? ''}>
-      <IntervieweeContent />
+      <IntervieweeContent sessionId={sessionId}/>
     </EditorProvider>
   );
 }

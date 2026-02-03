@@ -43,19 +43,20 @@ const NAV_OPTIONS: { value: NavPermission; label: string; desc: string }[] = [
 interface InterviewerViewProps {
   onEndSession: () => void;
   candidateToken?: string;
+  sessionId: string;
 }
 
-export default function InterviewerView({ onEndSession, candidateToken }: InterviewerViewProps) {
+export default function InterviewerView({ sessionId, onEndSession, candidateToken }: InterviewerViewProps) {
   const { token } = useParams<{ token: string }>();
 
   return (
     <EditorProvider token={token ?? ''}>
-      <InterviewerContent onEndSession={onEndSession} candidateToken={candidateToken} />
+      <InterviewerContent onEndSession={onEndSession} candidateToken={candidateToken} sessionId={sessionId} />
     </EditorProvider>
   );
 }
 
-function InterviewerContent({ onEndSession, candidateToken }: InterviewerViewProps) {
+function InterviewerContent({ sessionId, onEndSession, candidateToken }: InterviewerViewProps) {
   const { code, output, error, isRunning, executionTime, handleCodeChange, handleRun } = useEditor();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [navPermission, setNavPermission] = useState<NavPermission>('none');
@@ -76,7 +77,7 @@ function InterviewerContent({ onEndSession, candidateToken }: InterviewerViewPro
 
   return (
     <>
-      <Header candidateName="Candidate" showTimer showEndSession onEndSession={onEndSession} />
+      <Header candidateName="Candidate" showTimer sessionId={sessionId}showEndSession onEndSession={onEndSession} />
       {candidateUrl && (
         <div style={{
           display: 'flex',

@@ -32,7 +32,7 @@ export function EditorProvider({
   token: string;
   questionId?: string;
 }) {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('<?php\n// Write your solution here\nfunction solution() {\n\n}');
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');

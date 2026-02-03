@@ -19,7 +19,6 @@ interface OutputPanelProps {
 export default function OutputPanel({
   output = '',
   error = '',
-  testResults = [],
   isRunning = false,
   executionTime,
 }: OutputPanelProps) {

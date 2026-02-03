@@ -29,8 +29,13 @@ class SessionService{
         return $this->tokenService->resolveToken($token);
     }
 
-    public function startSession(string $sessionId): void {
+    public function startSession(string $sessionId,): void {
         $this->sessionModel->updateStatus($sessionId, 'active');
+
+        $session = $this->sessionModel->findById($sessionId);
+        if ($session && !$session['started_at']) {
+            $this->sessionModel->updateStartedAt($sessionId, gmdate('c'));
+        }
     }
     
     public function endSession(string $sessionId): void {
