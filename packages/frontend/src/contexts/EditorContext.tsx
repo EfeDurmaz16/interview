@@ -1,12 +1,3 @@
-/* ### Task 8.3 — Editor context
-**File**: `packages/frontend/src/contexts/EditorContext.tsx`
-- `EditorProvider` component
-  - State: `code`, `isRunning`, `output`, `error`
-  - `handleCodeChange(newCode)`: local state güncelle + WS `CODE_CHANGE` gönder (150ms debounce)
-  - Incoming `CODE_CHANGE` → code state güncelle (send loop'u tetiklemeden)
-  - `handleRun()`: WS `RUN_CODE` gönder, `isRunning = true`, `CODE_OUTPUT` gelince güncelle
-  - `handleSubmit()`: WS `SUBMIT_CODE` gönder */
-
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useCodeSync } from '../hooks/useCodeSync';
 import { WSMessageType } from '@jotform-interview/shared';
@@ -54,12 +45,14 @@ export function EditorProvider({
     } else if (lastMessage.type === WSMessageType.CODE_OUTPUT) {
       setIsRunning(false);
       const result = lastMessage.payload;
+      
       if (result?.error) {
         setError(result.error);
-        setOutput('');
+      } else if (result?.stderr) {
+        setError(result.stderr);
       } else {
         setError('');
-        setOutput(result?.output || result?.stdout || '');
+        setOutput(result?.stdout || '');
       }
     }
 
@@ -91,13 +84,17 @@ export function EditorProvider({
     const start = performance.now();
     try {
       const result = await runPhp(code);
-      const elapsed = Math.round(performance.now() - start);
-      setExecutionTime(elapsed);
-      setOutput(result.stdout);
-      setError(result.stderr);
+      useCodeSync(token).sendCodeOutput({
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        executionTime: Math.round(performance.now() - start),
+      });
     } catch (e: any) {
-      setExecutionTime(Math.round(performance.now() - start));
-      setError(e.message ?? 'Execution failed');
+      useCodeSync(token).sendCodeOutput({
+        error: e.message ?? 'Execution failed',
+        executionTime: Math.round(performance.now() - start),
+      });
     } finally {
       setIsRunning(false);
     }

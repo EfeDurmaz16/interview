@@ -98,6 +98,8 @@ class MessageHandler {
                 'payload' => ['role' => $conn->role ?? ''],
             ], $conn);
         }
+
+        
         $this->connections->removeConnection($conn);
     }
 

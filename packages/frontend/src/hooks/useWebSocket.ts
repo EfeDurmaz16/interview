@@ -82,12 +82,14 @@ export function useWebSocket(token: string) {
         }, delay);
       };
 
+      // soket kapandığında zaman da durmalı
+      // soket hatası olduğunda zaman da durmalı
       socket.onclose = handleDisconnect;
       socket.onerror = () => {
         handleDisconnect();
       };
     };
-
+    
     connect();
 
     return () => {

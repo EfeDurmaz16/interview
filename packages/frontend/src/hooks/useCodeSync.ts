@@ -25,11 +25,19 @@ export function useCodeSync(token: string) {
     });
   };
 
-  return {
-    sendCodeChange,
-    sendRun,
-    sendSubmit,
-    lastMessage,
-    status,
+
+  const sendCodeOutput = (result: {
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number;
+    executionTime?: number;
+    error?: string;
+  }) => {
+    sendMessage({
+      type: WSMessageType.CODE_OUTPUT,
+      payload: result,
+    });
   };
+
+  return { sendCodeChange, sendRun, sendSubmit, sendCodeOutput, lastMessage, status };
 }
