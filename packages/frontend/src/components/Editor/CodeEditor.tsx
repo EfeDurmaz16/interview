@@ -16,9 +16,19 @@ interface CodeEditorProps {
   onCodeChange?: (code: string) => void;
   externalCode?: string;
   showSubmit?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
 }
 
-export default function CodeEditor({ onRun, onSubmit, onCodeChange, externalCode, showSubmit }: CodeEditorProps) {
+export default function CodeEditor({
+  onRun,
+  onSubmit,
+  onCodeChange,
+  externalCode,
+  showSubmit,
+  readOnly,
+  disabled,
+}: CodeEditorProps) {
   const [language, setLanguage] = useState('PHP');
   const [code, setCode] = useState(externalCode ?? DEFAULT_CODE['PHP'] ?? '');
   const [editorWidth, setEditorWidth] = useState<number | null>(null);
@@ -33,6 +43,7 @@ export default function CodeEditor({ onRun, onSubmit, onCodeChange, externalCode
   }, [externalCode]);
 
   const handleChange = (val: string | undefined) => {
+    if (readOnly) return;
     const newCode = val ?? '';
     setCode(newCode);
     onCodeChange?.(newCode);
@@ -94,6 +105,7 @@ export default function CodeEditor({ onRun, onSubmit, onCodeChange, externalCode
         code={code}
         language={language}
         languages={Object.keys(LANGUAGE_MAP)}
+        disabled={disabled}
         onLanguageChange={handleLanguageChange}
         onRun={() => onRun?.(code, language)}
         onClear={handleClear}
@@ -117,6 +129,7 @@ export default function CodeEditor({ onRun, onSubmit, onCodeChange, externalCode
           lineNumbers: 'on',
           renderLineHighlight: 'line',
           tabSize: 4,
+          readOnly: !!readOnly,
         }}
       />
       {/* Drag handle */}

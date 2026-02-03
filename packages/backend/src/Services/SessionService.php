@@ -38,8 +38,15 @@ class SessionService{
         }
     }
     
+    
     public function endSession(string $sessionId): void {
         $this->sessionModel->updateStatus($sessionId, 'ended');
+
+        $session = $this->sessionModel->findById($sessionId);
+        if ($session && !$session['ended_at']) {
+            $this->sessionModel->updateEndedAt($sessionId, gmdate('c'));
+        }
+        
     }
 
     public function getSession(string $sessionId): ?array {

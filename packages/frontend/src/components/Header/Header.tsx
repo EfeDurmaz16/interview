@@ -3,13 +3,26 @@ import { useState, useEffect } from 'react';
 interface HeaderProps {
   candidateName?: string;
   showTimer?: boolean;
+  initialElapsedSeconds?: number;
   showEndSession?: boolean;
   onEndSession?: () => void;
   sessionId?: string;
 }
 
-export default function Header({ candidateName, showTimer = true, showEndSession, onEndSession }: HeaderProps) {
-  const [elapsed, setElapsed] = useState(0);
+export default function Header({
+  candidateName,
+  showTimer = true,
+  initialElapsedSeconds,
+  showEndSession,
+  onEndSession,
+}: HeaderProps) {
+  const [elapsed, setElapsed] = useState(initialElapsedSeconds ?? 0);
+
+  useEffect(() => {
+    if (typeof initialElapsedSeconds === 'number') {
+      setElapsed(initialElapsedSeconds);
+    }
+  }, [initialElapsedSeconds]);
 
   useEffect(() => {
     if (!showTimer) return;

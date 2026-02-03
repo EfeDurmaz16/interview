@@ -3,15 +3,34 @@ import { useCodeSync } from '../hooks/useCodeSync';
 import { WSMessageType } from '@jotform-interview/shared';
 import { runPhp } from '../services/phpWasm';
 
+type CodeOutputResult = {
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number;
+  executionTime?: number;
+  error?: string;
+};
+
+type WebSocketStatus = 'connecting' | 'connected' | 'disconnected';
+
 const EditorContext = createContext<{
   code: string;
   isRunning: boolean;
   output: string;
   error: string;
   executionTime: number | undefined;
+  currentQuestionId: string | undefined;
+  wsStatus: WebSocketStatus;
+  wsUrl: string;
+  lastMessage: any | null;
+  submitState: { status: 'idle' | 'sending' | 'sent' | 'error'; lastSentAt?: number; error?: string };
+  lastRemoteSubmission?: { questionId?: string; at: number } | null;
   handleCodeChange: (newCode: string) => void;
   handleRun: () => void;
-  handleSubmit: (questionId: string) => void;
+  handleSubmit: (questionId?: string) => void;
+  handleSetQuestion: (questionId: string) => void;
+  broadcastSessionStarted: (startedAt?: string, serverNow?: string) => void;
+  broadcastSessionEnded: (reason?: string, serverNow?: string) => void;
 } | undefined>(undefined);
 
 export function EditorProvider({ 
@@ -28,41 +47,60 @@ export function EditorProvider({
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [executionTime, setExecutionTime] = useState<number | undefined>();
+  const [currentQuestionId, setCurrentQuestionId] = useState<string | undefined>(questionId);
+  const [submitState, setSubmitState] = useState<{
+    status: 'idle' | 'sending' | 'sent' | 'error';
+    lastSentAt?: number;
+    error?: string;
+  }>({ status: 'idle' });
+  const [lastRemoteSubmission, setLastRemoteSubmission] = useState<{ questionId?: string; at: number } | null>(null);
 
-  const { sendCodeChange, sendRun, sendSubmit, lastMessage } = useCodeSync(token);
+  const {
+    sendCodeChange,
+    sendRun,
+    sendSubmit,
+    sendCodeOutput,
+    sendSetQuestion,
+    sendSessionStarted,
+    sendSessionEnded,
+    lastMessage,
+    status,
+    wsUrl,
+  } = useCodeSync(token);
   const debounceTimeoutRef = useRef<number | null>(null);
-  const isLocalChangeRef = useRef(false);
 
   // Incoming CODE_CHANGE → code state güncelle (send loop'u tetiklemeden)
   useEffect(() => {
     if (!lastMessage) return;
 
-    if (lastMessage.type === WSMessageType.CODE_CHANGE && !isLocalChangeRef.current) {
+    if (lastMessage.type === WSMessageType.CODE_CHANGE) {
       const incomingCode = lastMessage.payload?.code;
       if (incomingCode !== undefined && incomingCode !== code) {
         setCode(incomingCode);
       }
     } else if (lastMessage.type === WSMessageType.CODE_OUTPUT) {
       setIsRunning(false);
-      const result = lastMessage.payload;
-      
-      if (result?.error) {
-        setError(result.error);
-      } else if (result?.stderr) {
-        setError(result.stderr);
-      } else {
-        setError('');
-        setOutput(result?.stdout || '');
-      }
-    }
+      const result: CodeOutputResult | undefined = lastMessage.payload;
 
-    isLocalChangeRef.current = false;
+      if (typeof result?.executionTime === 'number') setExecutionTime(result.executionTime);
+      setOutput(result?.stdout || '');
+      if (result?.error) setError(result.error);
+      else if (result?.stderr) setError(result.stderr);
+      else setError('');
+    } else if (lastMessage.type === WSMessageType.SET_QUESTION) {
+      const incomingQuestionId = lastMessage.payload?.question_id;
+      if (incomingQuestionId) setCurrentQuestionId(incomingQuestionId);
+    } else if (lastMessage.type === WSMessageType.SUBMIT_CODE) {
+      setLastRemoteSubmission({
+        questionId: lastMessage.payload?.question_id,
+        at: Date.now(),
+      });
+    }
   }, [lastMessage, code]);
 
   // handleCodeChange: local state güncelle + WS CODE_CHANGE gönder (150ms debounce)
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode);
-    isLocalChangeRef.current = true;
 
     if (debounceTimeoutRef.current !== null) {
       clearTimeout(debounceTimeoutRef.current);
@@ -84,30 +122,60 @@ export function EditorProvider({
     const start = performance.now();
     try {
       const result = await runPhp(code);
-      useCodeSync(token).sendCodeOutput({
+      const elapsed = Math.round(performance.now() - start);
+      setExecutionTime(elapsed);
+      setOutput(result.stdout || '');
+      setError(result.stderr || '');
+      sendCodeOutput({
         stdout: result.stdout,
         stderr: result.stderr,
         exitCode: result.exitCode,
-        executionTime: Math.round(performance.now() - start),
+        executionTime: elapsed,
       });
     } catch (e: any) {
-      useCodeSync(token).sendCodeOutput({
+      const elapsed = Math.round(performance.now() - start);
+      setExecutionTime(elapsed);
+      setOutput('');
+      setError(e?.message ?? 'Execution failed');
+      sendCodeOutput({
         error: e.message ?? 'Execution failed',
-        executionTime: Math.round(performance.now() - start),
+        executionTime: elapsed,
       });
     } finally {
       setIsRunning(false);
     }
-  }, [code, sendRun]);
+  }, [code, sendRun, sendCodeOutput]);
 
   // handleSubmit: WS SUBMIT_CODE gönder
   const handleSubmit = useCallback((qId?: string) => {
-    if (!questionId && !qId) {
+    const resolvedQuestionId = qId || currentQuestionId || questionId;
+    if (!resolvedQuestionId) {
       console.warn('handleSubmit: questionId is required');
       return;
     }
-    sendSubmit(code, qId || questionId!);
-  }, [code, questionId, sendSubmit]);
+    setSubmitState({ status: 'sending' });
+    sendSubmit(code, resolvedQuestionId);
+    setSubmitState({ status: 'sent', lastSentAt: Date.now() });
+  }, [code, currentQuestionId, questionId, sendSubmit]);
+
+  const handleSetQuestion = useCallback((newQuestionId: string) => {
+    setCurrentQuestionId(newQuestionId);
+    sendSetQuestion(newQuestionId);
+  }, [sendSetQuestion]);
+
+  const broadcastSessionStarted = useCallback((startedAtIso?: string, serverNowIso?: string) => {
+    sendSessionStarted({
+      ...(startedAtIso ? { started_at: startedAtIso } : {}),
+      ...(serverNowIso ? { server_now: serverNowIso } : {}),
+    });
+  }, [sendSessionStarted]);
+
+  const broadcastSessionEnded = useCallback((reason?: string, serverNowIso?: string) => {
+    sendSessionEnded({
+      ...(reason ? { reason } : {}),
+      ...(serverNowIso ? { server_now: serverNowIso } : {}),
+    });
+  }, [sendSessionEnded]);
 
   // Cleanup debounce timeout on unmount
   useEffect(() => {
@@ -126,9 +194,18 @@ export function EditorProvider({
         output,
         error,
         executionTime,
+        currentQuestionId,
+        wsStatus: status,
+        wsUrl,
+        lastMessage,
+        submitState,
+        lastRemoteSubmission,
         handleCodeChange,
         handleRun,
-        handleSubmit
+        handleSubmit,
+        handleSetQuestion,
+        broadcastSessionStarted,
+        broadcastSessionEnded,
       }}
     >
       {children}

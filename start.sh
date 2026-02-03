@@ -55,11 +55,27 @@ cd ../..
 
 echo -e "${GREEN}✅ Database hazır${NC}"
 
+# WS port seçimi (8080 dolu olabiliyor)
+WS_PORT=${WS_PORT:-8080}
+if command -v lsof &> /dev/null; then
+    ORIGINAL_WS_PORT=${WS_PORT}
+    for i in {0..10}; do
+        if lsof -iTCP:${WS_PORT} -sTCP:LISTEN &> /dev/null; then
+            WS_PORT=$((WS_PORT + 1))
+        else
+            break
+        fi
+    done
+    if [ "${WS_PORT}" != "${ORIGINAL_WS_PORT}" ]; then
+        echo -e "${YELLOW}⚠️  Port ${ORIGINAL_WS_PORT} dolu. WS_PORT=${WS_PORT} kullanılacak.${NC}"
+    fi
+fi
+
 # 3 terminal penceresi aç
 echo -e "${YELLOW}Servisler başlatılıyor...${NC}"
 echo ""
 echo -e "${GREEN}Terminal 1: PHP REST API (localhost:8000)${NC}"
-echo -e "${GREEN}Terminal 2: PHP WebSocket (localhost:8080)${NC}"
+echo -e "${GREEN}Terminal 2: PHP WebSocket (localhost:${WS_PORT})${NC}"
 echo -e "${GREEN}Terminal 3: Frontend Dev Server (localhost:3000)${NC}"
 echo ""
 
@@ -69,10 +85,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/packages/backend/public\" && php -S localhost:8000"'
     
     # Terminal 2: WebSocket
-    osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/packages/backend\" && php bin/server.php"'
+    osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/packages/backend\" && WS_PORT='${WS_PORT}' php bin/server.php"'
     
     # Terminal 3: Frontend
-    osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'\" && npm run frontend"'
+    # Not setting VITE_WS_URL on purpose: client will use ws://localhost:3000/ws (Vite proxy) first.
+    osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'\" && VITE_WS_PORT='${WS_PORT}' npm run frontend"'
     
     echo -e "${GREEN}✅ 3 terminal penceresi açıldı${NC}"
 else
@@ -84,10 +101,10 @@ else
     echo ""
     echo "Terminal 2:"
     echo "  cd packages/backend"
-    echo "  php bin/server.php"
+    echo "  WS_PORT=${WS_PORT} php bin/server.php"
     echo ""
     echo "Terminal 3:"
-    echo "  npm run frontend"
+    echo "  VITE_WS_PORT=${WS_PORT} npm run frontend"
     echo ""
 fi
 

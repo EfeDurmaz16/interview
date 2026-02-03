@@ -59,9 +59,7 @@ export default function InterviewPage() {
   }
 
   const handleEndSession = () => {
-    if (window.confirm('Mülakatı sonlandırmak istediğinize emin misiniz?')) {
-      navigate('/');
-    }
+    navigate('/');
   };
 
   if (role === 'interviewer') {

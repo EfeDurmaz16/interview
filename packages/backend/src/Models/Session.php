@@ -32,5 +32,13 @@ class Session{
         $stmt = $db->prepare('UPDATE sessions SET started_at = ? WHERE id = ?');
         $stmt->execute([$startedAt, $id]);
     }
+
+    public function updateEndedAt(string $id, ?string $endedAt): void {
+        $db = Database::getConnection();
+        $stmt = $db->prepare('UPDATE sessions SET ended_at = ? WHERE id = ?');
+        $stmt->execute([$endedAt, $id]);
+    }
+    
+
 }
 ?>

@@ -3,6 +3,10 @@
 require_once __DIR__ . "/../../vendor/autoload.php";
 require_once __DIR__ . "/ConnectionManager.php";
 require_once __DIR__ . "/MessageHandler.php";
+require_once __DIR__ . "/../Models/CodeSnapshot.php";
+require_once __DIR__ . "/../Models/Session.php";
+require_once __DIR__ . "/../Services/TokenService.php";
+require_once __DIR__ . "/../Services/SessionService.php";
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
@@ -73,7 +77,12 @@ class InterviewWebSocket implements MessageComponentInterface {
     private MessageHandler $handler;
 
     public function __construct() {
-        $this->handler = new MessageHandler(new ConnectionManager());
+        $tokenService = new TokenService();
+        $sessionModel = new Session();
+        $sessionService = new SessionService($tokenService, $sessionModel);
+        $codeSnapshot = new CodeSnapshot();
+
+        $this->handler = new MessageHandler(new ConnectionManager(), $sessionService, $codeSnapshot);
     }
     
     public function onOpen(ConnectionInterface $conn): void {

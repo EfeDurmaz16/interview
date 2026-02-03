@@ -15,7 +15,8 @@ use React\EventLoop\Factory as LoopFactory;
 Database::init();
 
 $loop = LoopFactory::create();
-$socket = new ReactServer('0.0.0.0:8080', $loop);
+$port = getenv('WS_PORT') ?: '8080';
+$socket = new ReactServer('127.0.0.1:' . $port, $loop);
 
 $server = new IoServer(
     new HttpServer(
@@ -26,7 +27,7 @@ $server = new IoServer(
     $loop
 );
 
-echo "WebSocket server running on ws://0.0.0.0:8080\n";
+echo "WebSocket server running on ws://127.0.0.1:" . $port . "\n";
 $server->run();
 
 ?>

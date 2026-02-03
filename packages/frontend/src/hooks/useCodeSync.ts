@@ -2,7 +2,7 @@ import { useWebSocket } from "./useWebSocket";
 import { WSMessageType } from "@jotform-interview/shared";
 
 export function useCodeSync(token: string) {
-  const { sendMessage, lastMessage, status } = useWebSocket(token);
+  const { sendMessage, lastMessage, status, wsUrl } = useWebSocket(token);
 
   const sendCodeChange = (code: string) => {
     sendMessage({
@@ -25,6 +25,12 @@ export function useCodeSync(token: string) {
     });
   };
 
+  const sendSetQuestion = (questionId: string) => {
+    sendMessage({
+      type: WSMessageType.SET_QUESTION,
+      payload: { question_id: questionId },
+    });
+  };
 
   const sendCodeOutput = (result: {
     stdout?: string;
@@ -39,5 +45,30 @@ export function useCodeSync(token: string) {
     });
   };
 
-  return { sendCodeChange, sendRun, sendSubmit, sendCodeOutput, lastMessage, status };
+  const sendSessionStarted = (payload?: { started_at?: string; server_now?: string }) => {
+    sendMessage({
+      type: WSMessageType.SESSION_STARTED,
+      payload: payload ?? {},
+    });
+  };
+
+  const sendSessionEnded = (payload?: { reason?: string; server_now?: string }) => {
+    sendMessage({
+      type: WSMessageType.SESSION_ENDED,
+      payload: payload ?? {},
+    });
+  };
+
+  return {
+    sendCodeChange,
+    sendRun,
+    sendSubmit,
+    sendSetQuestion,
+    sendCodeOutput,
+    sendSessionStarted,
+    sendSessionEnded,
+    lastMessage,
+    status,
+    wsUrl,
+  };
 }

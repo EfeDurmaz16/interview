@@ -24,7 +24,9 @@ class SessionRoutes {
                 json(['error' => 'Not found'], 404);
                 return;
             }
-            json($result);
+            json(array_merge($result, [
+                'server_now' => gmdate('c'),
+            ]));
         });
 
         $router->patch('/api/sessions/:id', function ($params, $body) use ($sessionService) {
@@ -37,7 +39,12 @@ class SessionRoutes {
                 json(['error' => 'Invalid action'], 400);
                 return;
             }
-            json(['success' => true]);
+            $session = $sessionService->getSession($params['id']);
+            json([
+                'success' => true,
+                'server_now' => gmdate('c'),
+                'session' => $session,
+            ]);
         });
 
         $router->get('/api/sessions/:id/report', function ($params, $body) {
