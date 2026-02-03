@@ -21,6 +21,7 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     handleCodeChange,
     handleRun,
     handleSubmit,
+    handleClear,
   } = useEditor();
   const [sessionStatus, setSessionStatus] = useState<'waiting' | 'active' | 'ended'>('waiting');
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -137,6 +138,7 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
             onCodeChange={isEnded ? undefined : handleCodeChange}
             onRun={isEnded ? undefined : handleRun}
             onSubmit={isEnded ? undefined : () => handleSubmit()}
+            onClear={handleClear}
           />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>

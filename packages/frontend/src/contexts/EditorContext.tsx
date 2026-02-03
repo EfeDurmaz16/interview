@@ -28,6 +28,7 @@ const EditorContext = createContext<{
   handleCodeChange: (newCode: string) => void;
   handleRun: () => void;
   handleSubmit: (questionId?: string) => void;
+  handleClear: () => void;
   handleSetQuestion: (questionId: string) => void;
   broadcastSessionStarted: (startedAt?: string, serverNow?: string) => void;
   broadcastSessionEnded: (reason?: string, serverNow?: string) => void;
@@ -158,6 +159,13 @@ export function EditorProvider({
     setSubmitState({ status: 'sent', lastSentAt: Date.now() });
   }, [code, currentQuestionId, questionId, sendSubmit]);
 
+  const handleClear = useCallback(() => {
+    setIsRunning(false);
+    setOutput('');
+    setError('');
+    setExecutionTime(undefined);
+  }, []);
+
   const handleSetQuestion = useCallback((newQuestionId: string) => {
     setCurrentQuestionId(newQuestionId);
     sendSetQuestion(newQuestionId);
@@ -203,6 +211,7 @@ export function EditorProvider({
         handleCodeChange,
         handleRun,
         handleSubmit,
+        handleClear,
         handleSetQuestion,
         broadcastSessionStarted,
         broadcastSessionEnded,

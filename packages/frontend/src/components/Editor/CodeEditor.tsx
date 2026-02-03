@@ -14,6 +14,7 @@ interface CodeEditorProps {
   onRun?: ((code: string, language: string) => void) | (() => void);
   onSubmit?: ((code: string, language: string) => void) | (() => void);
   onCodeChange?: (code: string) => void;
+  onClear?: () => void;
   externalCode?: string;
   showSubmit?: boolean;
   readOnly?: boolean;
@@ -24,6 +25,7 @@ export default function CodeEditor({
   onRun,
   onSubmit,
   onCodeChange,
+  onClear,
   externalCode,
   showSubmit,
   readOnly,
@@ -59,6 +61,7 @@ export default function CodeEditor({
     const newCode = DEFAULT_CODE[language] ?? '';
     setCode(newCode);
     onCodeChange?.(newCode);
+    onClear?.();
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

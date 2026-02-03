@@ -68,6 +68,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     handleCodeChange,
     handleRun,
     handleSetQuestion,
+    handleClear,
     broadcastSessionStarted,
     broadcastSessionEnded,
     wsStatus,
@@ -336,7 +337,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
       <div className="interview-layout">
         <InterviewerSidebar onSelectQuestion={(q) => handleSetQuestion(q.id)} />
         <div className="center-panel">
-          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} />
+          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} onClear = {handleClear}/>
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>
         <div className="right-panel">
