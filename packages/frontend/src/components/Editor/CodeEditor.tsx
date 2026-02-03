@@ -55,7 +55,10 @@ export default function CodeEditor({
   };
 
   const handleClear = () => {
-    setCode(DEFAULT_CODE[language] ?? '');
+    if (readOnly || disabled) return;
+    const newCode = DEFAULT_CODE[language] ?? '';
+    setCode(newCode);
+    onCodeChange?.(newCode);
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
