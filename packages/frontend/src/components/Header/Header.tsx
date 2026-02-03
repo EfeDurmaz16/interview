@@ -5,6 +5,7 @@ interface HeaderProps {
   showTimer?: boolean;
   showEndSession?: boolean;
   onEndSession?: () => void;
+  sessionId?: string;
 }
 
 export default function Header({ candidateName, showTimer = true, showEndSession, onEndSession }: HeaderProps) {

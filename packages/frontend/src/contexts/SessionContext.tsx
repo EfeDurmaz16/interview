@@ -1,15 +1,17 @@
 import type { Question, Session, Role } from '@jotform-interview/shared';
-import { createContext, useState, useEffect } from 'react';
-
-export const [sessionContext, setSessionContext] = useState<Session | null>(null);
+import { createContext, useState, type Dispatch, type SetStateAction } from 'react';
 
 export const SessionContext = createContext<{
   session: Session | null;
+  setSession: Dispatch<SetStateAction<Session | null>>;
   questions: Question[];
+  setQuestions: Dispatch<SetStateAction<Question[]>>;
   currentQuestion: Question | null;
+  setCurrentQuestion: Dispatch<SetStateAction<Question | null>>;
   role: Role | null;
+  setRole: Dispatch<SetStateAction<Role | null>>;
   ws: WebSocket | null;
-  setCurrentQuestion: (question: Question) => void;
+  setWs: Dispatch<SetStateAction<WebSocket | null>>;
 } | undefined>(undefined);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -19,13 +21,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
-    
-  
-  useEffect(() => {
-    const fetchSession = async () => {
-      const response = await fetch(`/api/sessions/${session?.id}`);
-      const data = await response.json();
-      setSession(data);
-    };
-  }, []);
+  return (
+    <SessionContext.Provider
+      value={{
+        session,
+        setSession,
+        questions,
+        setQuestions,
+        currentQuestion,
+        setCurrentQuestion,
+        role,
+        setRole,
+        ws,
+        setWs,
+      }}
+    >
+      {children}
+    </SessionContext.Provider>
+  );
 }

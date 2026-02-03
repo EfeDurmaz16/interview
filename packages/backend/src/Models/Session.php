@@ -26,5 +26,11 @@ class Session{
         $stmt = $db->prepare('DELETE FROM sessions WHERE id = ?');
         $stmt->execute([$id]);
     }
+
+    public function updateStartedAt(string $id, ?string $startedAt): void {
+        $db = Database::getConnection();
+        $stmt = $db->prepare('UPDATE sessions SET started_at = ? WHERE id = ?');
+        $stmt->execute([$startedAt, $id]);
+    }
 }
 ?>
