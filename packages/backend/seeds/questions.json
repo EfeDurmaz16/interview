@@ -1,0 +1,192 @@
+[
+  {
+    "id": "q_php_001_two_sum",
+    "title": "Two Sum",
+    "description": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nInput (stdin): JSON object like {\"nums\":[2,7,11,15],\"target\":9}\nOutput (stdout): JSON array of two indices like [0,1]\n\nConstraints:\n- 2 <= nums.length <= 10^5\n- -10^9 <= nums[i], target <= 10^9\n- Exactly one valid answer",
+    "difficulty": "easy",
+    "category": "Arrays",
+    "template_code": "<?php\nfunction twoSum(array $nums, int $target): array {\n    // TODO: return indices of the two numbers that add up to $target.\n    return [];\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$nums = $data['nums'] ?? [];\n$target = (int)($data['target'] ?? 0);\n\n$result = twoSum($nums, $target);\necho json_encode($result);\n",
+    "test_cases": [
+      { "input": "{\"nums\":[2,7,11,15],\"target\":9}", "expected_output": "[0,1]", "is_hidden": false },
+      { "input": "{\"nums\":[3,2,4],\"target\":6}", "expected_output": "[1,2]", "is_hidden": false },
+      { "input": "{\"nums\":[-3,4,3,90],\"target\":0}", "expected_output": "[0,2]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_002_valid_parentheses",
+    "title": "Valid Parentheses",
+    "description": "Given a string `s` containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\n\nAn input string is valid if:\n1) Open brackets must be closed by the same type of brackets.\n2) Open brackets must be closed in the correct order.\n\nInput (stdin): JSON object like {\"s\":\"()[]{}\"}\nOutput (stdout): \"true\" or \"false\"",
+    "difficulty": "easy",
+    "category": "Strings",
+    "template_code": "<?php\nfunction isValid(string $s): bool {\n    // TODO: return true if parentheses are valid, else false.\n    return false;\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$s = (string)($data['s'] ?? '');\n\necho isValid($s) ? 'true' : 'false';\n",
+    "test_cases": [
+      { "input": "{\"s\":\"()\"}", "expected_output": "true", "is_hidden": false },
+      { "input": "{\"s\":\"(]\"}", "expected_output": "false", "is_hidden": false },
+      { "input": "{\"s\":\"([{}])\"}", "expected_output": "true", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_003_reverse_linked_list",
+    "title": "Reverse Linked List",
+    "description": "Given the head of a singly linked list, reverse the list, and return the reversed list.\n\nFor this challenge, the input is provided as a JSON array of values, e.g. [1,2,3]. You should convert it into a linked list, reverse it, then output the reversed list back as a JSON array.\n\nInput (stdin): JSON array like [1,2,3,4,5]\nOutput (stdout): JSON array like [5,4,3,2,1]",
+    "difficulty": "easy",
+    "category": "Linked Lists",
+    "template_code": "<?php\nclass ListNode {\n    public int $val;\n    public ?ListNode $next;\n\n    public function __construct(int $val = 0, ?ListNode $next = null) {\n        $this->val = $val;\n        $this->next = $next;\n    }\n}\n\nfunction arrayToList(array $values): ?ListNode {\n    $dummy = new ListNode(0);\n    $cur = $dummy;\n    foreach ($values as $v) {\n        $cur->next = new ListNode((int)$v);\n        $cur = $cur->next;\n    }\n    return $dummy->next;\n}\n\nfunction listToArray(?ListNode $head): array {\n    $out = [];\n    while ($head !== null) {\n        $out[] = $head->val;\n        $head = $head->next;\n    }\n    return $out;\n}\n\nfunction reverseList(?ListNode $head): ?ListNode {\n    // TODO: reverse the linked list.\n    return $head;\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$values = $raw === '' ? [] : json_decode($raw, true);\nif (!is_array($values)) $values = [];\n\n$head = arrayToList($values);\n$reversed = reverseList($head);\necho json_encode(listToArray($reversed));\n",
+    "test_cases": [
+      { "input": "[1,2,3,4,5]", "expected_output": "[5,4,3,2,1]", "is_hidden": false },
+      { "input": "[1,2]", "expected_output": "[2,1]", "is_hidden": false },
+      { "input": "[]", "expected_output": "[]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_004_merge_two_sorted_arrays",
+    "title": "Merge Two Sorted Arrays",
+    "description": "You are given two integer arrays `nums1` and `nums2`, sorted in non-decreasing order, and two integers `m` and `n` representing the number of elements in `nums1` and `nums2` respectively.\n\nMerge `nums2` into `nums1` as one sorted array.\n\nThe final sorted array should not be returned by the function, but instead be stored inside the array `nums1`.\n\nInput (stdin): JSON object like {\"nums1\":[1,2,3,0,0,0],\"m\":3,\"nums2\":[2,5,6],\"n\":3}\nOutput (stdout): JSON array representing the mutated nums1, e.g. [1,2,2,3,5,6]",
+    "difficulty": "easy",
+    "category": "Arrays",
+    "template_code": "<?php\nfunction merge(array &$nums1, int $m, array $nums2, int $n): void {\n    // TODO: merge nums2 into nums1 in-place.\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$nums1 = $data['nums1'] ?? [];\n$m = (int)($data['m'] ?? 0);\n$nums2 = $data['nums2'] ?? [];\n$n = (int)($data['n'] ?? 0);\n\nmerge($nums1, $m, $nums2, $n);\necho json_encode($nums1);\n",
+    "test_cases": [
+      { "input": "{\"nums1\":[1,2,3,0,0,0],\"m\":3,\"nums2\":[2,5,6],\"n\":3}", "expected_output": "[1,2,2,3,5,6]", "is_hidden": false },
+      { "input": "{\"nums1\":[1],\"m\":1,\"nums2\":[],\"n\":0}", "expected_output": "[1]", "is_hidden": false },
+      { "input": "{\"nums1\":[0],\"m\":0,\"nums2\":[1],\"n\":1}", "expected_output": "[1]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_005_fizzbuzz",
+    "title": "FizzBuzz",
+    "description": "Given an integer `n`, return a string array `answer` (1-indexed) where:\n- answer[i] == \"FizzBuzz\" if i is divisible by 3 and 5.\n- answer[i] == \"Fizz\" if i is divisible by 3.\n- answer[i] == \"Buzz\" if i is divisible by 5.\n- answer[i] == i (as a string) if none of the above.\n\nInput (stdin): JSON number like 15\nOutput (stdout): JSON array of strings",
+    "difficulty": "easy",
+    "category": "Basics",
+    "template_code": "<?php\nfunction fizzBuzz(int $n): array {\n    // TODO: return fizzbuzz array from 1..n\n    return [];\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$n = (int)($raw === '' ? 0 : json_decode($raw, true));\n\necho json_encode(fizzBuzz($n));\n",
+    "test_cases": [
+      { "input": "3", "expected_output": "[\"1\",\"2\",\"Fizz\"]", "is_hidden": false },
+      { "input": "5", "expected_output": "[\"1\",\"2\",\"Fizz\",\"4\",\"Buzz\"]", "is_hidden": false },
+      { "input": "15", "expected_output": "[\"1\",\"2\",\"Fizz\",\"4\",\"Buzz\",\"Fizz\",\"7\",\"8\",\"Fizz\",\"Buzz\",\"11\",\"Fizz\",\"13\",\"14\",\"FizzBuzz\"]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_006_binary_search",
+    "title": "Binary Search",
+    "description": "Given an array of integers `nums` which is sorted in ascending order, and an integer `target`, write a function to search `target` in `nums`.\n\nIf `target` exists, return its index. Otherwise, return -1.\n\nInput (stdin): JSON object like {\"nums\":[-1,0,3,5,9,12],\"target\":9}\nOutput (stdout): index as a number (e.g. 4)",
+    "difficulty": "medium",
+    "category": "Arrays",
+    "template_code": "<?php\nfunction search(array $nums, int $target): int {\n    // TODO: implement binary search.\n    return -1;\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$nums = $data['nums'] ?? [];\n$target = (int)($data['target'] ?? 0);\n\necho (string)search($nums, $target);\n",
+    "test_cases": [
+      { "input": "{\"nums\":[-1,0,3,5,9,12],\"target\":9}", "expected_output": "4", "is_hidden": false },
+      { "input": "{\"nums\":[-1,0,3,5,9,12],\"target\":2}", "expected_output": "-1", "is_hidden": false },
+      { "input": "{\"nums\":[1,3,5,7,9],\"target\":1}", "expected_output": "0", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_007_merge_intervals",
+    "title": "Merge Intervals",
+    "description": "Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.\n\nInput (stdin): JSON array of intervals like [[1,3],[2,6],[8,10],[15,18]]\nOutput (stdout): JSON array of merged intervals like [[1,6],[8,10],[15,18]]",
+    "difficulty": "medium",
+    "category": "Arrays",
+    "template_code": "<?php\nfunction mergeIntervals(array $intervals): array {\n    // TODO: merge overlapping intervals.\n    return [];\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$intervals = $raw === '' ? [] : json_decode($raw, true);\nif (!is_array($intervals)) $intervals = [];\n\necho json_encode(mergeIntervals($intervals));\n",
+    "test_cases": [
+      { "input": "[[1,3],[2,6],[8,10],[15,18]]", "expected_output": "[[1,6],[8,10],[15,18]]", "is_hidden": false },
+      { "input": "[[1,4],[4,5]]", "expected_output": "[[1,5]]", "is_hidden": false },
+      { "input": "[[1,4],[0,4]]", "expected_output": "[[0,4]]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_008_group_anagrams",
+    "title": "Group Anagrams",
+    "description": "Given an array of strings `strs`, group the anagrams together.\n\nYou can return the answer in any order, but for testing we will normalize your output (sort words inside each group, then sort groups).\n\nInput (stdin): JSON array like [\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]\nOutput (stdout): JSON array of string arrays, e.g. [[\"ate\",\"eat\",\"tea\"],[\"bat\"],[\"nat\",\"tan\"]]",
+    "difficulty": "medium",
+    "category": "Strings",
+    "template_code": "<?php\nfunction groupAnagrams(array $strs): array {\n    // TODO: group anagrams.\n    return [];\n}\n\nfunction normalizeGroups(array $groups): array {\n    foreach ($groups as &$g) {\n        if (is_array($g)) sort($g, SORT_STRING);\n    }\n    unset($g);\n\n    usort($groups, function ($a, $b) {\n        $a0 = is_array($a) && count($a) ? $a[0] : '';\n        $b0 = is_array($b) && count($b) ? $b[0] : '';\n        if ($a0 === $b0) return count($a) <=> count($b);\n        return $a0 <=> $b0;\n    });\n\n    return $groups;\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$strs = $raw === '' ? [] : json_decode($raw, true);\nif (!is_array($strs)) $strs = [];\n\n$groups = groupAnagrams($strs);\necho json_encode(normalizeGroups($groups));\n",
+    "test_cases": [
+      { "input": "[\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]", "expected_output": "[[\"ate\",\"eat\",\"tea\"],[\"bat\"],[\"nat\",\"tan\"]]", "is_hidden": false },
+      { "input": "[\"\"]", "expected_output": "[[\"\"]]", "is_hidden": false },
+      { "input": "[\"a\"]", "expected_output": "[[\"a\"]]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_009_lru_cache",
+    "title": "LRU Cache",
+    "description": "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.\n\nImplement the `LRUCache` class:\n- `LRUCache(int capacity)` Initialize the LRU cache with positive size `capacity`.\n- `get(int key)` Return the value of the key if it exists, otherwise return -1.\n- `put(int key, int value)` Update the value of the key if it exists. Otherwise, add the key-value pair to the cache. If the number of keys exceeds the capacity, evict the least recently used key.\n\nInput (stdin): JSON object like {\"capacity\":2,\"ops\":[[\"put\",1,1],[\"put\",2,2],[\"get\",1]]}\nOutput (stdout): JSON array of results for each operation (use null for put), e.g. [null,null,1]",
+    "difficulty": "hard",
+    "category": "Design",
+    "template_code": "<?php\nclass LRUCache {\n    public function __construct(int $capacity) {\n        // TODO\n    }\n\n    public function get(int $key): int {\n        // TODO\n        return -1;\n    }\n\n    public function put(int $key, int $value): void {\n        // TODO\n    }\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$capacity = (int)($data['capacity'] ?? 0);\n$ops = $data['ops'] ?? [];\n\n$cache = new LRUCache($capacity);\n$out = [];\nforeach ($ops as $op) {\n    if (!is_array($op) || !count($op)) continue;\n    $name = $op[0];\n    if ($name === 'put') {\n        $cache->put((int)$op[1], (int)$op[2]);\n        $out[] = null;\n    } elseif ($name === 'get') {\n        $out[] = $cache->get((int)$op[1]);\n    }\n}\n\necho json_encode($out);\n",
+    "test_cases": [
+      { "input": "{\"capacity\":2,\"ops\":[[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2],[\"put\",4,4],[\"get\",1],[\"get\",3],[\"get\",4]]}", "expected_output": "[null,null,1,null,-1,null,-1,3,4]", "is_hidden": false },
+      { "input": "{\"capacity\":1,\"ops\":[[\"put\",2,1],[\"get\",2],[\"put\",3,2],[\"get\",2],[\"get\",3]]}", "expected_output": "[null,1,null,-1,2]", "is_hidden": false },
+      { "input": "{\"capacity\":2,\"ops\":[[\"get\",2],[\"put\",2,6],[\"get\",1],[\"put\",1,5],[\"put\",1,2],[\"get\",1],[\"get\",2]]}", "expected_output": "[-1,null,-1,null,null,2,6]", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  },
+  {
+    "id": "q_php_010_longest_substring_no_repeat",
+    "title": "Longest Substring Without Repeating Characters",
+    "description": "Given a string `s`, find the length of the longest substring without repeating characters.\n\nInput (stdin): JSON object like {\"s\":\"abcabcbb\"}\nOutput (stdout): length as a number (e.g. 3)\n\nConstraints:\n- 0 <= s.length <= 5 * 10^4\n- s consists of English letters, digits, symbols and spaces.",
+    "difficulty": "medium",
+    "category": "Strings",
+    "template_code": "<?php\nfunction lengthOfLongestSubstring(string $s): int {\n    // TODO: sliding window\n    return 0;\n}\n\n$raw = trim(stream_get_contents(STDIN));\n$data = $raw === '' ? [] : json_decode($raw, true);\n$s = (string)($data['s'] ?? '');\n\necho (string)lengthOfLongestSubstring($s);\n",
+    "test_cases": [
+      { "input": "{\"s\":\"abcabcbb\"}", "expected_output": "3", "is_hidden": false },
+      { "input": "{\"s\":\"bbbbb\"}", "expected_output": "1", "is_hidden": false },
+      { "input": "{\"s\":\"pwwkew\"}", "expected_output": "3", "is_hidden": true }
+    ],
+    "evaluation_criteria": [
+      { "id": "correctness", "label": "Correctness", "max_score": 10 },
+      { "id": "efficiency", "label": "Time & space efficiency", "max_score": 5 },
+      { "id": "clarity", "label": "Code clarity", "max_score": 5 }
+    ],
+    "session_id": "ses_question_bank"
+  }
+]

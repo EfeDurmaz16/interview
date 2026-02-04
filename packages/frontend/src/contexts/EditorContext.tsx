@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { useCodeSync } from '../hooks/useCodeSync';
+import { useCodeSync, type NavPermission } from '../hooks/useCodeSync';
 import { WSMessageType } from '@jotform-interview/shared';
 import { runPhp } from '../services/phpWasm';
 
@@ -20,6 +20,8 @@ const EditorContext = createContext<{
   error: string;
   executionTime: number | undefined;
   currentQuestionId: string | undefined;
+  navPermission: NavPermission;
+  interviewerQuestionId: string | null;
   wsStatus: WebSocketStatus;
   wsUrl: string;
   lastMessage: any | null;
@@ -29,7 +31,8 @@ const EditorContext = createContext<{
   handleRun: () => void;
   handleSubmit: (questionId?: string) => void;
   handleClear: () => void;
-  handleSetQuestion: (questionId: string) => void;
+  handleSetQuestion: (questionId: string, opts?: { navPermission?: NavPermission }) => void;
+  handleSetNavPermission: (navPermission: NavPermission) => void;
   broadcastSessionStarted: (startedAt?: string, serverNow?: string) => void;
   broadcastSessionEnded: (reason?: string, serverNow?: string) => void;
 } | undefined>(undefined);
@@ -49,6 +52,8 @@ export function EditorProvider({
   const [error, setError] = useState('');
   const [executionTime, setExecutionTime] = useState<number | undefined>();
   const [currentQuestionId, setCurrentQuestionId] = useState<string | undefined>(questionId);
+  const [navPermission, setNavPermission] = useState<NavPermission>('none');
+  const [interviewerQuestionId, setInterviewerQuestionId] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<{
     status: 'idle' | 'sending' | 'sent' | 'error';
     lastSentAt?: number;
@@ -62,6 +67,7 @@ export function EditorProvider({
     sendSubmit,
     sendCodeOutput,
     sendSetQuestion,
+    sendSetQuestionWithNavPermission,
     sendSessionStarted,
     sendSessionEnded,
     lastMessage,
@@ -90,7 +96,12 @@ export function EditorProvider({
       else setError('');
     } else if (lastMessage.type === WSMessageType.SET_QUESTION) {
       const incomingQuestionId = lastMessage.payload?.question_id;
+      const incomingNavPermission = lastMessage.payload?.nav_permission as NavPermission | undefined;
       if (incomingQuestionId) setCurrentQuestionId(incomingQuestionId);
+      if (incomingNavPermission) setNavPermission(incomingNavPermission);
+      if (incomingQuestionId && lastMessage.role === 'interviewer') {
+        setInterviewerQuestionId(incomingQuestionId);
+      }
     } else if (lastMessage.type === WSMessageType.SUBMIT_CODE) {
       setLastRemoteSubmission({
         questionId: lastMessage.payload?.question_id,
@@ -166,10 +177,21 @@ export function EditorProvider({
     setExecutionTime(undefined);
   }, []);
 
-  const handleSetQuestion = useCallback((newQuestionId: string) => {
+  const handleSetQuestion = useCallback((newQuestionId: string, opts?: { navPermission?: NavPermission }) => {
     setCurrentQuestionId(newQuestionId);
-    sendSetQuestion(newQuestionId);
-  }, [sendSetQuestion]);
+    if (opts?.navPermission) {
+      sendSetQuestionWithNavPermission(newQuestionId, opts.navPermission);
+    } else {
+      sendSetQuestion(newQuestionId);
+    }
+  }, [sendSetQuestion, sendSetQuestionWithNavPermission]);
+
+  const handleSetNavPermission = useCallback((next: NavPermission) => {
+    setNavPermission(next);
+    const resolvedQuestionId = currentQuestionId || questionId;
+    if (!resolvedQuestionId) return;
+    sendSetQuestionWithNavPermission(resolvedQuestionId, next);
+  }, [currentQuestionId, questionId, sendSetQuestionWithNavPermission]);
 
   const broadcastSessionStarted = useCallback((startedAtIso?: string, serverNowIso?: string) => {
     sendSessionStarted({
@@ -203,6 +225,8 @@ export function EditorProvider({
         error,
         executionTime,
         currentQuestionId,
+        navPermission,
+        interviewerQuestionId,
         wsStatus: status,
         wsUrl,
         lastMessage,
@@ -213,6 +237,7 @@ export function EditorProvider({
         handleSubmit,
         handleClear,
         handleSetQuestion,
+        handleSetNavPermission,
         broadcastSessionStarted,
         broadcastSessionEnded,
       }}

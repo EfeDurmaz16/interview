@@ -3,37 +3,18 @@ import Header from '../components/Header/Header';
 import InterviewerSidebar from '../components/Sidebar/InterviewerSidebar';
 import CodeEditor from '../components/Editor/CodeEditor';
 import OutputPanel from '../components/Output/OutputPanel';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { EditorProvider, useEditor } from '../contexts/EditorContext';
 import { WSMessageType } from '@jotform-interview/shared';
+import { fetchQuestionBank, type QuestionBankQuestion } from '../services/questionBank';
+import type { NavPermission } from '../hooks/useCodeSync';
 
-type NavPermission = 'none' | 'prev_only' | 'both';
-
-const SOLUTION_CHECKLIST = [
-  { id: 'c1', label: 'Dogru veri yapisi kullanimi (hash map)' },
-  { id: 'c2', label: 'Edge case\'leri kontrol etti' },
-  { id: 'c3', label: 'Zaman karmasikligini acikladi (O(n))' },
-  { id: 'c4', label: 'Alan karmasikligini acikladi (O(n))' },
-  { id: 'c5', label: 'Brute force cozumu anlatti' },
-  { id: 'c6', label: 'Optimize cozumu implement etti' },
-  { id: 'c7', label: 'Kodu test etti' },
-  { id: 'c8', label: 'Temiz ve okunabilir kod yazdi' },
+const FALLBACK_EVAL = [
+  { id: 'correctness', label: 'Correctness', max_score: 10 },
+  { id: 'efficiency', label: 'Time & space efficiency', max_score: 5 },
+  { id: 'clarity', label: 'Code clarity', max_score: 5 },
 ];
-
-const SOLUTION_CODE = `<?php
-// Two Sum - Optimal Solution O(n)
-function twoSum($nums, $target) {
-    $map = [];
-    foreach ($nums as $i => $num) {
-        $complement = $target - $num;
-        if (isset($map[$complement])) {
-            return [$map[$complement], $i];
-        }
-        $map[$num] = $i;
-    }
-    return [];
-}`;
 
 const NAV_OPTIONS: { value: NavPermission; label: string; desc: string }[] = [
   { value: 'none', label: 'Navigasyon Yok', desc: 'Aday sorular arasi gecis yapamaz' },
@@ -51,7 +32,7 @@ export default function InterviewerView({ sessionId, onEndSession, candidateToke
   const { token } = useParams<{ token: string }>();
 
   return (
-    <EditorProvider token={token ?? ''} questionId="1">
+    <EditorProvider token={token ?? ''}>
       <InterviewerContent onEndSession={onEndSession} candidateToken={candidateToken} sessionId={sessionId} />
     </EditorProvider>
   );
@@ -65,9 +46,12 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     isRunning,
     executionTime,
     lastMessage,
+    currentQuestionId,
+    navPermission,
     handleCodeChange,
     handleRun,
     handleSetQuestion,
+    handleSetNavPermission,
     handleClear,
     broadcastSessionStarted,
     broadcastSessionEnded,
@@ -76,8 +60,9 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     lastRemoteSubmission,
   } = useEditor();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [navPermission, setNavPermission] = useState<NavPermission>('none');
   const [copied, setCopied] = useState(false);
+  const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
 
   const [sessionStatus, setSessionStatus] = useState<'waiting' | 'active' | 'ended'>('waiting');
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -85,6 +70,42 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
   const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [candidateConnected, setCandidateConnected] = useState(false);
+  const didSyncToCandidateRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchQuestionBank()
+      .then((qs) => {
+        if (cancelled) return;
+        setQuestions(qs);
+        setQuestionsError(null);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setQuestions([]);
+        setQuestionsError(e?.message ?? 'Failed to load question bank');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const questionSummaries = useMemo(
+    () => questions.map((q) => ({ id: q.id, title: q.title, difficulty: q.difficulty, category: q.category })),
+    [questions]
+  );
+
+  const activeQuestion = useMemo(
+    () => (currentQuestionId ? questions.find((q) => q.id === currentQuestionId) : undefined),
+    [questions, currentQuestionId]
+  );
+
+  // If interviewer has no active question yet, default to the first one.
+  useEffect(() => {
+    if (!currentQuestionId && questions.length > 0) {
+      handleSetQuestion(questions[0].id, { navPermission });
+    }
+  }, [currentQuestionId, questions, handleSetQuestion, navPermission]);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +161,18 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     }
   }, [lastMessage]);
 
+  // When a candidate joins (or reconnects), push current question + navigation permission.
+  useEffect(() => {
+    if (!candidateConnected) {
+      didSyncToCandidateRef.current = false;
+      return;
+    }
+    if (didSyncToCandidateRef.current) return;
+    if (!currentQuestionId) return;
+    handleSetQuestion(currentQuestionId, { navPermission });
+    didSyncToCandidateRef.current = true;
+  }, [candidateConnected, currentQuestionId, handleSetQuestion, navPermission]);
+
   const initialElapsedSeconds = (() => {
     if (sessionStatus !== 'active' || !startedAt) return 0;
     const nowServerMs = Date.now() - serverSkewMs;
@@ -159,6 +192,15 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
 
   const toggle = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
   
+  const evalCriteria = (activeQuestion?.evaluation_criteria?.length ? activeQuestion.evaluation_criteria : FALLBACK_EVAL)
+    .map((c) => ({ id: c.id, label: c.label, max_score: c.max_score }));
+
+  const checklistCompletedCount = (() => {
+    if (!activeQuestion) return 0;
+    const prefix = `${activeQuestion.id}:`;
+    return Object.entries(checked).filter(([k, v]) => v && k.startsWith(prefix)).length;
+  })();
+
   return (
     <>
       <Header
@@ -335,7 +377,11 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
 
 
       <div className="interview-layout">
-        <InterviewerSidebar onSelectQuestion={(q) => handleSetQuestion(q.id)} />
+        <InterviewerSidebar
+          questions={questionSummaries}
+          activeQuestionId={currentQuestionId}
+          onSelectQuestionId={(id) => handleSetQuestion(id, { navPermission })}
+        />
         <div className="center-panel">
           <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} onClear = {handleClear}/>
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
@@ -354,7 +400,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
                   name="navPermission"
                   value={opt.value}
                   checked={navPermission === opt.value}
-                  onChange={() => setNavPermission(opt.value)}
+                  onChange={() => handleSetNavPermission(opt.value)}
                 />
                 <div>
                   <div className="nav-permission__label">{opt.label}</div>
@@ -370,7 +416,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
             <Editor
               height="100%"
               language="php"
-              value={SOLUTION_CODE}
+              value={activeQuestion?.template_code || (questionsError ? `<?php\n// ${questionsError}\n` : "<?php\n// Select a question from the left\n")}
               theme="vs-dark"
               options={{
                 readOnly: true,
@@ -385,33 +431,63 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
               }}
             />
           </div>
+          {activeQuestion?.test_cases?.length ? (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div className="right-panel__title">Test Case'ler</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {activeQuestion.test_cases.slice(0, 6).map((tc, idx) => (
+                  <div
+                    key={`${activeQuestion.id}:tc:${idx}`}
+                    style={{
+                      border: '1px solid var(--jotform-border)',
+                      borderRadius: 8,
+                      padding: '0.5rem',
+                      background: 'var(--jotform-bg, #fff)',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <strong>#{idx + 1}</strong>
+                      <span style={{ color: 'var(--jotform-text-light)' }}>{tc.is_hidden ? 'hidden' : 'visible'}</span>
+                    </div>
+                    <div style={{ color: 'var(--jotform-text-light)' }}>Input</div>
+                    <pre style={{ margin: '0.25rem 0 0.5rem 0', whiteSpace: 'pre-wrap' }}>{tc.input}</pre>
+                    <div style={{ color: 'var(--jotform-text-light)' }}>Expected</div>
+                    <pre style={{ margin: '0.25rem 0 0 0', whiteSpace: 'pre-wrap' }}>{tc.expected_output}</pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Checklist */}
           <div className="right-panel__title" style={{ marginTop: '1rem' }}>Degerlendirme Kontrol Listesi</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {SOLUTION_CHECKLIST.map((item) => (
+            {evalCriteria.map((item) => {
+              const key = activeQuestion ? `${activeQuestion.id}:${item.id}` : item.id;
+              return (
               <label
-                key={item.id}
+                key={key}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '0.5rem',
                   fontSize: '0.8125rem',
                   cursor: 'pointer',
-                  color: checked[item.id] ? 'var(--jotform-success)' : 'var(--jotform-text)',
+                  color: checked[key] ? 'var(--jotform-success)' : 'var(--jotform-text)',
                 }}
               >
                 <input
                   type="checkbox"
-                  checked={!!checked[item.id]}
-                  onChange={() => toggle(item.id)}
+                  checked={!!checked[key]}
+                  onChange={() => toggle(key)}
                   style={{ accentColor: 'var(--jotform-success)', marginTop: 2, flexShrink: 0 }}
                 />
-                <span style={{ textDecoration: checked[item.id] ? 'line-through' : 'none' }}>
-                  {item.label}
+                <span style={{ textDecoration: checked[key] ? 'line-through' : 'none' }}>
+                  {item.label} <span style={{ color: 'var(--jotform-text-light)' }}>({item.max_score})</span>
                 </span>
               </label>
-            ))}
+            )})}
           </div>
           <div style={{
             marginTop: '0.75rem',
@@ -419,7 +495,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
             fontWeight: 600,
             color: 'var(--jotform-text-light)',
           }}>
-            {Object.values(checked).filter(Boolean).length} / {SOLUTION_CHECKLIST.length} tamamlandi
+            {activeQuestion ? `${checklistCompletedCount} / ${evalCriteria.length} tamamlandi` : `0 / ${evalCriteria.length} tamamlandi`}
           </div>
 
           <div className="right-panel__title" style={{ marginTop: '1rem' }}>Notlar</div>

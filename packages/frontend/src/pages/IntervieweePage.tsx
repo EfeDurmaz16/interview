@@ -4,8 +4,9 @@ import CodeEditor from '../components/Editor/CodeEditor';
 import OutputPanel from '../components/Output/OutputPanel';
 import { EditorProvider, useEditor } from '../contexts/EditorContext';
 import { useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { WSMessageType } from '@jotform-interview/shared';
+import { fetchQuestionBank, type QuestionBankQuestion } from '../services/questionBank';
 
 function IntervieweeContent({ sessionId }: { sessionId: string }) {
   const {
@@ -15,6 +16,9 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     isRunning,
     executionTime,
     lastMessage,
+    currentQuestionId,
+    navPermission,
+    interviewerQuestionId,
     wsStatus,
     wsUrl,
     submitState,
@@ -22,11 +26,57 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     handleRun,
     handleSubmit,
     handleClear,
+    handleSetQuestion,
   } = useEditor();
   const [sessionStatus, setSessionStatus] = useState<'waiting' | 'active' | 'ended'>('waiting');
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [serverSkewMs, setServerSkewMs] = useState(0);
   const [endedNotice, setEndedNotice] = useState(false);
+  const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchQuestionBank()
+      .then((qs) => {
+        if (cancelled) return;
+        setQuestions(qs);
+        setQuestionsError(null);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setQuestions([]);
+        setQuestionsError(e?.message ?? 'Failed to load question bank');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activeQuestion = useMemo(
+    () => (currentQuestionId ? questions.find((q) => q.id === currentQuestionId) : undefined),
+    [questions, currentQuestionId]
+  );
+
+  const questionSummaries = useMemo(
+    () => questions.map((q) => ({ id: q.id, title: q.title, difficulty: q.difficulty })),
+    [questions]
+  );
+
+  const canSelectQuestionId = useMemo(() => {
+    const interviewerIndex = interviewerQuestionId ? questions.findIndex((q) => q.id === interviewerQuestionId) : -1;
+    const allowedMaxIndex = navPermission === 'both' ? questions.length - 1 : navPermission === 'prev_only' ? interviewerIndex : interviewerIndex;
+
+    return (id: string) => {
+      if (!id) return false;
+      const idx = questions.findIndex((q) => q.id === id);
+      if (idx < 0) return false;
+      if (navPermission === 'both') return true;
+      if (navPermission === 'prev_only') return allowedMaxIndex >= 0 && idx <= allowedMaxIndex;
+      // 'none'
+      return interviewerQuestionId ? id === interviewerQuestionId : idx === allowedMaxIndex;
+    };
+  }, [questions, navPermission, interviewerQuestionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +147,7 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
   })();
 
   const isEnded = endedNotice || sessionStatus === 'ended';
+  const editorDisabled = isEnded || !activeQuestion;
 
   return (
     <>
@@ -128,19 +179,34 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
         </div>
       )}
       <div className="interview-layout">
-        <IntervieweeSidebar />
+        <IntervieweeSidebar
+          question={activeQuestion}
+          questions={questionSummaries}
+          activeQuestionId={currentQuestionId}
+          navPermission={navPermission}
+          canSelectQuestionId={canSelectQuestionId}
+          onSelectQuestionId={(id) => {
+            if (!canSelectQuestionId(id)) return;
+            handleSetQuestion(id);
+          }}
+        />
         <div className="center-panel">
           <CodeEditor
             showSubmit
             externalCode={code}
-            readOnly={isEnded}
-            disabled={isEnded}
-            onCodeChange={isEnded ? undefined : handleCodeChange}
-            onRun={isEnded ? undefined : handleRun}
-            onSubmit={isEnded ? undefined : () => handleSubmit()}
+            readOnly={editorDisabled}
+            disabled={editorDisabled}
+            onCodeChange={editorDisabled ? undefined : handleCodeChange}
+            onRun={editorDisabled ? undefined : handleRun}
+            onSubmit={editorDisabled ? undefined : () => handleSubmit()}
             onClear={handleClear}
           />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
+          {!activeQuestion && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--jotform-text-light)' }}>
+              {questionsError ? `Sorular yüklenemedi: ${questionsError}` : 'Interviewer bir soru seçtiğinde editör aktif olacak.'}
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -151,7 +217,7 @@ export default function IntervieweeView({ sessionId }: { sessionId: string }) {
   const { token } = useParams<{ token: string }>();
 
   return (
-    <EditorProvider token={token ?? ''} questionId="1">
+    <EditorProvider token={token ?? ''}>
       <IntervieweeContent sessionId={sessionId}/>
     </EditorProvider>
   );

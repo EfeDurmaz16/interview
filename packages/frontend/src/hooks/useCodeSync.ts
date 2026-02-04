@@ -1,6 +1,8 @@
 import { useWebSocket } from "./useWebSocket";
 import { WSMessageType } from "@jotform-interview/shared";
 
+export type NavPermission = 'none' | 'prev_only' | 'both';
+
 export function useCodeSync(token: string) {
   const { sendMessage, lastMessage, status, wsUrl } = useWebSocket(token);
 
@@ -29,6 +31,13 @@ export function useCodeSync(token: string) {
     sendMessage({
       type: WSMessageType.SET_QUESTION,
       payload: { question_id: questionId },
+    });
+  };
+
+  const sendSetQuestionWithNavPermission = (questionId: string, navPermission: NavPermission) => {
+    sendMessage({
+      type: WSMessageType.SET_QUESTION,
+      payload: { question_id: questionId, nav_permission: navPermission },
     });
   };
 
@@ -64,6 +73,7 @@ export function useCodeSync(token: string) {
     sendRun,
     sendSubmit,
     sendSetQuestion,
+    sendSetQuestionWithNavPermission,
     sendCodeOutput,
     sendSessionStarted,
     sendSessionEnded,
