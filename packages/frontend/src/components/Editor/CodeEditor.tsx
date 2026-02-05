@@ -1,6 +1,8 @@
 import Editor from '@monaco-editor/react';
 import EditorToolbar from './EditorToolbar';
 import { useState, useRef, useCallback, useEffect } from 'react';
+import type { OnMount } from '@monaco-editor/react';
+import { ensurePhpIntellisense } from '../../services/monacoPhpIntellisense';
 
 const LANGUAGE_MAP: Record<string, string> = {
   PHP: 'php',
@@ -36,6 +38,7 @@ export default function CodeEditor({
   const [editorWidth, setEditorWidth] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const hasSetupIntellisense = useRef(false);
 
   // Sync code from external source (e.g. WebSocket)
   useEffect(() => {
@@ -93,6 +96,13 @@ export default function CodeEditor({
     document.addEventListener('mouseup', onMouseUp);
   }, []);
 
+  const handleMount = useCallback<OnMount>((_editor, monaco) => {
+    if (hasSetupIntellisense.current) return;
+    hasSetupIntellisense.current = true;
+
+    ensurePhpIntellisense(monaco);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -126,6 +136,7 @@ export default function CodeEditor({
         value={code}
         theme="vs-dark"
         onChange={handleChange}
+        onMount={handleMount}
         options={{
           fontSize: 14,
           fontFamily: "'Fira Code', 'Monaco', monospace",
@@ -136,6 +147,9 @@ export default function CodeEditor({
           renderLineHighlight: 'line',
           tabSize: 4,
           readOnly: !!readOnly,
+          quickSuggestions: { other: true, comments: false, strings: true },
+          suggestOnTriggerCharacters: true,
+          wordBasedSuggestions: 'matchingDocuments',
         }}
       />
       {/* Drag handle */}

@@ -16,12 +16,14 @@ Database::init();
 
 $loop = LoopFactory::create();
 $port = getenv('WS_PORT') ?: '8080';
+$maxRequestSize = (int) (getenv('WS_MAX_REQUEST_SIZE') ?: '65536');
+$maxRequestSize = max(4096, $maxRequestSize);
 $socket = new ReactServer('127.0.0.1:' . $port, $loop);
 
 $server = new IoServer(
     new HttpServer(
         new WsServer(new InterviewWebSocket()),
-        16384
+        $maxRequestSize
     ),
     $socket,
     $loop

@@ -19,6 +19,16 @@ export default defineConfig(({ mode }) => {
         '/ws': {
           target: `ws://127.0.0.1:${wsPort}`,
           ws: true,
+          // Prevent huge localhost cookies from being forwarded to the WS backend,
+          // which can trigger 413/431 errors during the handshake.
+          configure: (proxy) => {
+            const stripCookies = (proxyReq: any) => {
+              if (proxyReq?.removeHeader) proxyReq.removeHeader('cookie');
+            };
+
+            proxy.on('proxyReq', stripCookies);
+            proxy.on('proxyReqWs', stripCookies);
+          },
         },
       },
     },
