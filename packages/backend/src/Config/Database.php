@@ -25,6 +25,17 @@ class Database {
             }
         }
 
+        // Safe migrations for existing databases
+        $migrations = [
+            'ALTER TABLE code_snapshots ADD COLUMN files_json TEXT',
+            "ALTER TABLE code_snapshots ADD COLUMN entry_file TEXT DEFAULT 'solution.php'",
+            "ALTER TABLE code_snapshots ADD COLUMN active_file TEXT DEFAULT 'solution.php'",
+            'ALTER TABLE questions ADD COLUMN template_files_json TEXT',
+        ];
+        foreach ($migrations as $m) {
+            try { self::$instance->exec($m); } catch (PDOException $e) { /* column already exists */ }
+        }
+
         // Seed default superadmin password if not exists
         $check = self::$instance->prepare('SELECT COUNT(*) FROM settings WHERE key = ?');
         $check->execute(['superadmin_password']);
