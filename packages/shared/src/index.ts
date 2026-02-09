@@ -13,6 +13,10 @@ export enum WSMessageType {
     SESSION_STARTED = 'session_started',
     SESSION_ENDED = 'session_ended',
     EVALUATION_UPDATE = 'evaluation_update',
+    NAVIGATE_QUESTION = 'navigate_question',
+    WHITEBOARD_INIT = 'whiteboard_init',
+    WHITEBOARD_PATCH = 'whiteboard_patch',
+    WHITEBOARD_SNAPSHOT = 'whiteboard_snapshot',
 }
 
 interface WSMessage<T> {
@@ -53,7 +57,7 @@ interface Session{
     id: string;
     interviewerId: string;
     intervieweeId: string;
-    status: "waiting" | "pending" | "active" | "ended" | "completed";
+    status: SessionStatus;
     questions: Question[];
     startTime: number;
     endTime: number;
@@ -63,5 +67,71 @@ interface Role{
     id: string;
     name: "interviewer" | "candidate" | "interviewee";
 }
+
+export type SessionStatus = 'waiting' | 'pending' | 'active' | 'ended' | 'completed';
+
+export type QuestionLevel = 'intern' | 'junior' | 'senior';
+
+export type QuestionKind = 'coding' | 'present';
+
+export type ProjectFiles = Record<string, string>;
+
+export interface ActiveQuestionPayload {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  level: QuestionLevel;
+  kind: QuestionKind;
+  templateCode: ProjectFiles;
+  visibleTestCases: TestCase[];
+  evaluationCriteria: EvaluationCriterion[];
+}
+
+export interface CodeChangePayload {
+  files: ProjectFiles;
+  activeFile: string;
+  cursorPosition?: { line: number; column: number };
+}
+
+export interface WhiteboardPatchPayload {
+  changes: unknown[];
+  clientId: string;
+  baseVersion?: number;
+}
+
+export interface ReportDto {
+  session: {
+    id: string;
+    candidateName: string;
+    interviewerName: string;
+    status: SessionStatus;
+    startedAt: string | null;
+    endedAt: string | null;
+    durationMinutes: number | null;
+  };
+  questions: Array<{
+    id: string;
+    title: string;
+    level: QuestionLevel;
+    kind: QuestionKind;
+    difficulty: string;
+    evaluation: {
+      criteriaScores: Record<string, number>;
+      notes: string;
+    } | null;
+    lastSubmission: {
+      files: ProjectFiles;
+      submittedAt: string;
+    } | null;
+  }>;
+  whiteboardSnapshot: {
+    base64Png: string;
+    width: number;
+    height: number;
+  } | null;
+}
+
+export type UserRole = 'interviewer' | 'admin' | 'superadmin';
 
 export type { WSMessage, Question, TestCase, EvaluationCriterion, Session, Role };
