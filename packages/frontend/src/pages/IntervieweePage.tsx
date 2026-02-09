@@ -4,9 +4,23 @@ import CodeEditor from '../components/Editor/CodeEditor';
 import OutputPanel from '../components/Output/OutputPanel';
 import { EditorProvider, useEditor } from '../contexts/EditorContext';
 import { useParams } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WSMessageType } from '@jotform-interview/shared';
 import { fetchQuestionBank, type QuestionBankQuestion } from '../services/questionBank';
+
+function parseQuestions(raw: any[]): QuestionBankQuestion[] {
+  return (Array.isArray(raw) ? raw : []).map((q: any) => ({
+    id: String(q.id ?? ''),
+    title: String(q.title ?? ''),
+    description: String(q.description ?? ''),
+    difficulty: String(q.difficulty ?? 'easy') as any,
+    category: String(q.category ?? ''),
+    template_code: String(q.template_code ?? ''),
+    test_cases: Array.isArray(q.test_cases) ? q.test_cases : (() => { try { return JSON.parse(q.test_cases); } catch { return []; } })(),
+    evaluation_criteria: Array.isArray(q.evaluation_criteria) ? q.evaluation_criteria : (() => { try { return JSON.parse(q.evaluation_criteria); } catch { return []; } })(),
+    session_id: String(q.session_id ?? ''),
+  })).filter((q: any) => q.id && q.title);
+}
 
 function IntervieweeContent({ sessionId }: { sessionId: string }) {
   const {
@@ -31,38 +45,35 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
   const [endedNotice, setEndedNotice] = useState(false);
   const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const fetchCountRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadQuestions = useCallback(() => {
+    const myFetch = ++fetchCountRef.current;
     const fetchFn = sessionId
       ? fetch(`/api/sessions/${sessionId}/questions`).then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
       : fetchQuestionBank();
     fetchFn
       .then((raw: any[]) => {
-        if (cancelled) return;
-        const qs = (Array.isArray(raw) ? raw : []).map((q: any) => ({
-          id: String(q.id ?? ''),
-          title: String(q.title ?? ''),
-          description: String(q.description ?? ''),
-          difficulty: String(q.difficulty ?? 'easy') as any,
-          category: String(q.category ?? ''),
-          template_code: String(q.template_code ?? ''),
-          test_cases: Array.isArray(q.test_cases) ? q.test_cases : (() => { try { return JSON.parse(q.test_cases); } catch { return []; } })(),
-          evaluation_criteria: Array.isArray(q.evaluation_criteria) ? q.evaluation_criteria : (() => { try { return JSON.parse(q.evaluation_criteria); } catch { return []; } })(),
-          session_id: String(q.session_id ?? ''),
-        })).filter((q: any) => q.id && q.title);
-        setQuestions(qs);
+        if (myFetch !== fetchCountRef.current) return;
+        setQuestions(parseQuestions(raw));
         setQuestionsError(null);
       })
       .catch((e: any) => {
-        if (cancelled) return;
+        if (myFetch !== fetchCountRef.current) return;
         setQuestions([]);
         setQuestionsError(e?.message ?? 'Failed to load questions');
       });
-    return () => {
-      cancelled = true;
-    };
   }, [sessionId]);
+
+  // Initial load
+  useEffect(() => { loadQuestions(); }, [loadQuestions]);
+
+  // Re-fetch when interviewer sets a question we don't have yet
+  useEffect(() => {
+    if (!currentQuestionId) return;
+    const found = questions.some((q) => q.id === currentQuestionId);
+    if (!found) loadQuestions();
+  }, [currentQuestionId, questions, loadQuestions]);
 
   const activeQuestion = useMemo(
     () => (currentQuestionId ? questions.find((q) => q.id === currentQuestionId) : undefined),
