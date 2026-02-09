@@ -19,9 +19,6 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     currentQuestionId,
     navPermission,
     interviewerQuestionId,
-    wsStatus,
-    wsUrl,
-    submitState,
     handleCodeChange,
     handleRun,
     handleSubmit,
@@ -152,29 +149,8 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
   return (
     <>
       <Header showTimer={sessionStatus === 'active'} initialElapsedSeconds={initialElapsedSeconds} sessionId={sessionId} />
-      <div
-        style={{
-          padding: '0.5rem 1rem',
-          background: 'var(--jotform-bg-light, #f5f5f5)',
-          borderBottom: '1px solid var(--jotform-border, #e0e0e0)',
-          fontSize: '0.8125rem',
-          display: 'flex',
-          gap: '0.75rem',
-          alignItems: 'center',
-          color: 'var(--jotform-text-light, #6b7280)',
-        }}
-      >
-        <span>WS: {wsStatus}</span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--jotform-text-light, #6b7280)', whiteSpace: 'nowrap' }}>
-          {wsUrl}
-        </span>
-        <span>
-          Submit: {submitState.status}
-          {submitState.lastSentAt ? ` (${new Date(submitState.lastSentAt).toLocaleTimeString()})` : ''}
-        </span>
-      </div>
       {endedNotice && (
-        <div style={{ padding: '0.75rem 1rem', background: 'rgba(220, 53, 69, 0.08)', color: 'var(--jotform-error, #dc3545)' }}>
+        <div className="session-ended-notice">
           Mülakatınız sonlandırılmıştır. Teşekkürler!
         </div>
       )}
@@ -203,7 +179,7 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
           />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
           {!activeQuestion && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--jotform-text-light)' }}>
+            <div style={{ marginTop: '0.5rem', padding: '0 1rem', fontSize: '0.8125rem', color: 'var(--jotform-text-light)' }}>
               {questionsError ? `Sorular yüklenemedi: ${questionsError}` : 'Interviewer bir soru seçtiğinde editör aktif olacak.'}
             </div>
           )}

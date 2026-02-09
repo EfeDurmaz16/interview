@@ -55,9 +55,6 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     handleClear,
     broadcastSessionStarted,
     broadcastSessionEnded,
-    wsStatus,
-    wsUrl,
-    lastRemoteSubmission,
   } = useEditor();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -190,8 +187,62 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleStart = async () => {
+    if (sessionStatus !== 'waiting') return;
+    setIsStarting(true);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start' }),
+      });
+      if (!res.ok) return;
+      const sessionRes = await fetch(`/api/sessions/${sessionId}`);
+      if (sessionRes.ok) {
+        const data = await sessionRes.json();
+        setSessionStatus(data?.status ?? 'active');
+        const iso = data?.started_at ?? new Date().toISOString();
+        setStartedAt(iso);
+        if (data?.server_now) setServerSkewMs(Date.now() - Date.parse(data.server_now));
+        broadcastSessionStarted(iso, data?.server_now);
+      } else {
+        setSessionStatus('active');
+        const iso = new Date().toISOString();
+        setStartedAt(iso);
+        broadcastSessionStarted(iso);
+      }
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleEnd = async () => {
+    if (sessionStatus === 'ended') return;
+    if (!window.confirm('Mülakatı sonlandırmak istediğinize emin misiniz?')) return;
+    setIsEnding(true);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'end' }),
+      });
+      let serverNow: string | undefined;
+      try {
+        const data = await res.json();
+        serverNow = data?.server_now;
+        if (serverNow) setServerSkewMs(Date.now() - Date.parse(serverNow));
+      } catch {
+        // ignore
+      }
+      broadcastSessionEnded('manual_end', serverNow);
+    } finally {
+      setIsEnding(false);
+      onEndSession();
+    }
+  };
+
   const toggle = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-  
+
   const evalCriteria = (activeQuestion?.evaluation_criteria?.length ? activeQuestion.evaluation_criteria : FALLBACK_EVAL)
     .map((c) => ({ id: c.id, label: c.label, max_score: c.max_score }));
 
@@ -211,170 +262,37 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
         showEndSession
         onEndSession={onEndSession}
       />
+
+      {/* Toolbar */}
       {candidateUrl && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.5rem 1rem',
-          background: 'var(--jotform-bg-light, #f5f5f5)',
-          borderBottom: '1px solid var(--jotform-border, #e0e0e0)',
-          fontSize: '0.8125rem',
-        }}>
-
-        
-          <span style={{ fontWeight: 600 }}>Aday Davet Linki:</span>
-          <span
-            style={{
-              fontSize: '0.75rem',
-              padding: '0.125rem 0.5rem',
-              borderRadius: 999,
-              background: wsStatus === 'connected' ? 'rgba(0, 117, 255, 0.10)' : 'rgba(154, 160, 166, 0.18)',
-              color: wsStatus === 'connected' ? 'var(--jotform-primary, #0075ff)' : '#6b7280',
-              border: `1px solid ${wsStatus === 'connected' ? 'rgba(0, 117, 255, 0.25)' : 'rgba(154, 160, 166, 0.35)'}`,
-              whiteSpace: 'nowrap',
-            }}
-            title={`WS: ${wsStatus}\n${wsUrl}`}
-          >
-            WS: {wsStatus}
+        <div className="interview-toolbar">
+          <span className="interview-toolbar__label">Aday Linki:</span>
+          <span className={`interview-toolbar__status ${candidateConnected ? 'interview-toolbar__status--connected' : 'interview-toolbar__status--disconnected'}`}>
+            {candidateConnected ? 'Aday Bağlı' : 'Aday Bağlı Değil'}
           </span>
-          <span
-            style={{
-              fontSize: '0.75rem',
-              padding: '0.125rem 0.5rem',
-              borderRadius: 999,
-              background: candidateConnected ? 'rgba(40, 167, 69, 0.12)' : 'rgba(220, 53, 69, 0.12)',
-              color: candidateConnected ? 'var(--jotform-success, #28a745)' : 'var(--jotform-error, #dc3545)',
-              border: `1px solid ${candidateConnected ? 'rgba(40, 167, 69, 0.35)' : 'rgba(220, 53, 69, 0.35)'}`,
-              whiteSpace: 'nowrap',
-            }}
-            title={candidateConnected ? 'Candidate connected' : 'Candidate not connected'}
-          >
-            {candidateConnected ? 'Bağlı' : 'Bağlı değil'}
-          </span>
-          {lastRemoteSubmission && (
-            <span style={{ fontSize: '0.75rem', color: 'var(--jotform-text-light, #6b7280)', whiteSpace: 'nowrap' }}>
-              Aday submit aldı ({lastRemoteSubmission.questionId ?? 'n/a'})
-            </span>
-          )}
-          <code style={{
-            flex: 1,
-            padding: '0.25rem 0.5rem',
-            background: 'var(--jotform-bg, #fff)',
-            border: '1px solid var(--jotform-border, #e0e0e0)',
-            borderRadius: 4,
-            fontSize: '0.75rem',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>{candidateUrl}</code>
+          <code className="interview-toolbar__url">{candidateUrl}</code>
           <button
+            className={`interview-toolbar__btn interview-toolbar__btn--copy${copied ? ' copied' : ''}`}
             onClick={copyLink}
-            style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: 4,
-              border: 'none',
-              background: copied ? 'var(--jotform-success, #28a745)' : 'var(--jotform-primary, #0075ff)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
           >
-            {copied ? 'Kopyalandi!' : 'Kopyala'}
+            {copied ? 'Kopyalandı!' : 'Kopyala'}
           </button>
-
           <button
+            className="interview-toolbar__btn interview-toolbar__btn--start"
             disabled={isStarting || sessionStatus !== 'waiting'}
-            onClick={async () => {
-              if (sessionStatus !== 'waiting') return;
-              setIsStarting(true);
-              try {
-                const res = await fetch(`/api/sessions/${sessionId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'start' }),
-                });
-                if (!res.ok) return;
-                const sessionRes = await fetch(`/api/sessions/${sessionId}`);
-                if (sessionRes.ok) {
-                  const data = await sessionRes.json();
-                  setSessionStatus(data?.status ?? 'active');
-                  const iso = data?.started_at ?? new Date().toISOString();
-                  setStartedAt(iso);
-                  if (data?.server_now) setServerSkewMs(Date.now() - Date.parse(data.server_now));
-                  broadcastSessionStarted(iso, data?.server_now);
-                } else {
-                  setSessionStatus('active');
-                  const iso = new Date().toISOString();
-                  setStartedAt(iso);
-                  broadcastSessionStarted(iso);
-                }
-              } finally {
-                setIsStarting(false);
-              }
-            }}
-            style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: 4,
-              border: 'none',
-              background: isStarting || sessionStatus !== 'waiting' ? '#9aa0a6' : 'var(--jotform-success, #28a745)',
-              color: '#fff',
-
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
+            onClick={handleStart}
           >
             {isStarting ? 'Başlatılıyor…' : 'Mülakatı Başlat'}
           </button>
-
-
           <button
+            className="interview-toolbar__btn interview-toolbar__btn--end"
             disabled={isEnding || sessionStatus === 'ended'}
-            onClick={async () => {
-              if (sessionStatus === 'ended') return;
-              if (!window.confirm('Mülakatı sonlandırmak istediğinize emin misiniz?')) return;
-              setIsEnding(true);
-              try {
-                const res = await fetch(`/api/sessions/${sessionId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'end' }),
-                });
-                let serverNow: string | undefined;
-                try {
-                  const data = await res.json();
-                  serverNow = data?.server_now;
-                  if (serverNow) setServerSkewMs(Date.now() - Date.parse(serverNow));
-                } catch {
-                  // ignore
-                }
-                broadcastSessionEnded('manual_end', serverNow);
-              } finally {
-                setIsEnding(false);
-                onEndSession();
-              }
-            }}
-            style={{
-              padding: '0.25rem 0.75rem',
-              borderRadius: 4,
-              border: 'none',
-              background: isEnding || sessionStatus === 'ended' ? '#9aa0a6' : 'var(--jotform-error, #dc3545)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
+            onClick={handleEnd}
           >
             {isEnding ? 'Sonlandırılıyor…' : 'Mülakatı Sonlandır'}
           </button>
         </div>
       )}
-
 
       <div className="interview-layout">
         <InterviewerSidebar
@@ -383,7 +301,7 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
           onSelectQuestionId={(id) => handleSetQuestion(id, { navPermission })}
         />
         <div className="center-panel">
-          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} onClear = {handleClear}/>
+          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} onClear={handleClear} />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>
         <div className="right-panel">

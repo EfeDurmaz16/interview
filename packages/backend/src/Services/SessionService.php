@@ -20,8 +20,8 @@ class SessionService{
             'session_id' => $sessionId,
             'interviewer_token' => $tokens['interviewer_token'],
             'candidate_token' => $tokens['candidate_token'],
-            'interviewer_url' => "http://localhost:8000/interview/{$tokens['interviewer_token']}",
-            'candidate_url' => "http://localhost:8000/interview/{$tokens['candidate_token']}"
+            'interviewer_url' => self::frontendBaseUrl() . "/interview/{$tokens['interviewer_token']}",
+            'candidate_url' => self::frontendBaseUrl() . "/interview/{$tokens['candidate_token']}"
         ];
     }
 
@@ -51,6 +51,10 @@ class SessionService{
 
     public function getSession(string $sessionId): ?array {
         return $this->sessionModel->findById($sessionId);
+    }
+
+    private static function frontendBaseUrl(): string {
+        return rtrim($_ENV['FRONTEND_URL'] ?? 'http://localhost:3000', '/');
     }
 }
 
