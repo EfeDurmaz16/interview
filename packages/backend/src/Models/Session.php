@@ -8,6 +8,12 @@ class Session{
         return $id; 
     }
 
+    public function findAll(): array {
+        $db = Database::getConnection();
+        $stmt = $db->query('SELECT * FROM sessions ORDER BY created_at DESC');
+        return $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+    }
+
     public function findById(string $id): ?array {
         $db = Database::getConnection();
         $stmt = $db->prepare('SELECT * FROM sessions WHERE id = ?');

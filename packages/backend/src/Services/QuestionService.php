@@ -26,5 +26,24 @@
             $this->question->removeFromSession($sessionId,$questionId);
         }
 
+        public function createQuestion(array $data): array {
+            $id = $this->question->create($data);
+            return $this->question->getQuestionById($id);
+        }
+
+        public function updateQuestion(string $id, array $data): ?array {
+            $existing = $this->question->getQuestionById($id);
+            if (!$existing) return null;
+            $this->question->update($id, $data);
+            return $this->question->getQuestionById($id);
+        }
+
+        public function deleteQuestion(string $id): bool {
+            $existing = $this->question->getQuestionById($id);
+            if (!$existing) return false;
+            $this->question->deleteQuestion($id);
+            return true;
+        }
+
     }
 ?>

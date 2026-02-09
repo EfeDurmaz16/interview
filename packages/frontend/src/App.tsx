@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import InterviewPage from './pages/InterviewPage';
+import AdminLayout from './pages/admin/AdminLayout';
+import QuestionBankPage from './pages/admin/QuestionBankPage';
+import SessionsListPage from './pages/admin/SessionsListPage';
+import SessionReportPage from './pages/admin/SessionReportPage';
+import SuperadminAssignPage from './pages/admin/SuperadminAssignPage';
 
 export interface ResolveResult {
   role: 'interviewer' | 'candidate';
@@ -55,6 +60,13 @@ export default function App() {
     <div className="app-container">
       <Routes>
         <Route path="/interview/:token" element={<InterviewPage />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/questions" replace />} />
+          <Route path="questions" element={<QuestionBankPage />} />
+          <Route path="sessions" element={<SessionsListPage />} />
+          <Route path="sessions/:id/report" element={<SessionReportPage />} />
+          <Route path="assign" element={<SuperadminAssignPage />} />
+        </Route>
         <Route path="*" element={<CreateSessionRedirect />} />
       </Routes>
     </div>

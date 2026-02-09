@@ -48,5 +48,50 @@ class Question {
         $stmt = $db->prepare('DELETE FROM session_questions WHERE session_id = ? AND question_id = ?');
         $stmt->execute([$sessionId, $questionId]);
     }
+
+    public function create(array $data): string {
+        $id = 'q_' . uniqid();
+        $db = Database::getConnection();
+        $stmt = $db->prepare(
+            'INSERT INTO questions (id, title, description, difficulty, category, template_code, test_cases, evaluation_criteria, sort_order, session_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $id,
+            $data['title'] ?? '',
+            $data['description'] ?? '',
+            $data['difficulty'] ?? 'easy',
+            $data['category'] ?? 'General',
+            $data['template_code'] ?? '',
+            $data['test_cases'] ?? '[]',
+            $data['evaluation_criteria'] ?? '[]',
+            $data['sort_order'] ?? 0,
+            $data['session_id'] ?? 'bank',
+        ]);
+        return $id;
+    }
+
+    public function update(string $id, array $data): void {
+        $db = Database::getConnection();
+        $fields = [];
+        $values = [];
+        $allowed = ['title', 'description', 'difficulty', 'category', 'template_code', 'test_cases', 'evaluation_criteria', 'sort_order'];
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data)) {
+                $fields[] = "$field = ?";
+                $values[] = $data[$field];
+            }
+        }
+        if (empty($fields)) return;
+        $values[] = $id;
+        $stmt = $db->prepare('UPDATE questions SET ' . implode(', ', $fields) . ' WHERE id = ?');
+        $stmt->execute($values);
+    }
+
+    public function deleteQuestion(string $id): void {
+        $db = Database::getConnection();
+        $stmt = $db->prepare('DELETE FROM questions WHERE id = ?');
+        $stmt->execute([$id]);
+    }
 }
 

@@ -16,6 +16,7 @@ require __DIR__ . '/../src/Routes/Router.php';
 require __DIR__ . '/../src/Routes/SessionRoutes.php';
 require __DIR__ . '/../src/Routes/QuestionRoutes.php';
 require __DIR__ . '/../src/Routes/EvaluationRoutes.php';
+require __DIR__ . '/../src/Routes/AdminRoutes.php';
 
 // CORS headers
 header('Access-Control-Allow-Origin: *');
@@ -34,5 +35,6 @@ $router = new Router();
 SessionRoutes::register($router);
 QuestionRoutes::register($router);
 EvaluationRoutes::register($router);
+AdminRoutes::register($router);
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
