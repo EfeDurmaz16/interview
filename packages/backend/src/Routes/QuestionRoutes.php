@@ -21,5 +21,16 @@ class QuestionRoutes {
             $questionService->removeQuestionFromSession($params['id'], $params['qid']);
             http_response_code(204);
         });
+
+        // Batch replace session questions
+        $router->put('/api/sessions/:id/questions', function ($params, $body) use ($questionService) {
+            $questionIds = $body['question_ids'] ?? [];
+            if (!is_array($questionIds)) {
+                json(['error' => 'question_ids must be an array'], 400);
+                return;
+            }
+            $questionService->replaceSessionQuestions($params['id'], $questionIds);
+            json(['success' => true]);
+        });
     }
 }

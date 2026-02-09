@@ -7,6 +7,7 @@ require __DIR__ . '/../src/Models/Token.php';
 require __DIR__ . '/../src/Models/Question.php';
 require __DIR__ . '/../src/Models/Evaluation.php';
 require __DIR__ . '/../src/Models/CodeSnapshot.php';
+require __DIR__ . '/../src/Models/Settings.php';
 require __DIR__ . '/../src/Services/TokenService.php';
 require __DIR__ . '/../src/Services/SessionService.php';
 require __DIR__ . '/../src/Services/QuestionService.php';
@@ -21,7 +22,7 @@ require __DIR__ . '/../src/Routes/AdminRoutes.php';
 // CORS headers
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

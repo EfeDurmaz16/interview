@@ -71,21 +71,36 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
 
   useEffect(() => {
     let cancelled = false;
-    fetchQuestionBank()
-      .then((qs) => {
+    const fetchFn = sessionId
+      ? fetch(`/api/sessions/${sessionId}/questions`).then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
+      : fetchQuestionBank();
+    fetchFn
+      .then((raw: any[]) => {
         if (cancelled) return;
+        // Normalize: session endpoint returns raw rows with JSON strings
+        const qs = (Array.isArray(raw) ? raw : []).map((q: any) => ({
+          id: String(q.id ?? ''),
+          title: String(q.title ?? ''),
+          description: String(q.description ?? ''),
+          difficulty: String(q.difficulty ?? 'easy') as any,
+          category: String(q.category ?? ''),
+          template_code: String(q.template_code ?? ''),
+          test_cases: Array.isArray(q.test_cases) ? q.test_cases : (() => { try { return JSON.parse(q.test_cases); } catch { return []; } })(),
+          evaluation_criteria: Array.isArray(q.evaluation_criteria) ? q.evaluation_criteria : (() => { try { return JSON.parse(q.evaluation_criteria); } catch { return []; } })(),
+          session_id: String(q.session_id ?? ''),
+        })).filter((q: any) => q.id && q.title);
         setQuestions(qs);
         setQuestionsError(null);
       })
       .catch((e: any) => {
         if (cancelled) return;
         setQuestions([]);
-        setQuestionsError(e?.message ?? 'Failed to load question bank');
+        setQuestionsError(e?.message ?? 'Failed to load questions');
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sessionId]);
 
   const questionSummaries = useMemo(
     () => questions.map((q) => ({ id: q.id, title: q.title, difficulty: q.difficulty, category: q.category })),

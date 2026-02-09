@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchSessions, type SessionData } from '../../services/adminApi';
+import { fetchSessions, deleteSession, type SessionData } from '../../services/adminApi';
 
 function ReportIcon({ color = '#6F76A7' }: { color?: string }) {
   return (
@@ -10,6 +10,17 @@ function ReportIcon({ color = '#6F76A7' }: { color?: string }) {
       <line x1="16" x2="8" y1="13" y2="13" />
       <line x1="16" x2="8" y1="17" y2="17" />
       <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function TrashIcon({ color = '#F23A3C' }: { color?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" x2="10" y1="11" y2="17" />
+      <line x1="14" x2="14" y1="11" y2="17" />
     </svg>
   );
 }
@@ -30,6 +41,7 @@ export default function SessionsListPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [daysFilter, setDaysFilter] = useState<number>(30);
   const navigate = useNavigate();
+  const isSuperadmin = !!sessionStorage.getItem('superadmin_token');
 
   useEffect(() => {
     loadSessions();
@@ -46,6 +58,16 @@ export default function SessionsListPage() {
       setLoading(false);
     }
   }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this session? This cannot be undone.')) return;
+    try {
+      await deleteSession(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    } catch {
+      alert('Failed to delete session.');
+    }
+  };
 
   // Filter by date range
   const dateFiltered = useMemo(() => {
@@ -120,6 +142,7 @@ export default function SessionsListPage() {
           <span className="admin-table-header-cell admin-col--started">Started at</span>
           <span className="admin-table-header-cell admin-col--ended">Ended at</span>
           <span className="admin-table-header-cell admin-col--report">Report</span>
+          {isSuperadmin && <span className="admin-table-header-cell" style={{ width: 48 }}></span>}
         </div>
         <div className="admin-table-body">
           {loading && (
@@ -151,6 +174,18 @@ export default function SessionsListPage() {
                   <ReportIcon color={s.status === 'ended' ? '#FF6100' : '#6F76A7'} />
                 </button>
               </span>
+              {isSuperadmin && (
+                <span className="admin-table-cell" style={{ width: 48, textAlign: 'center' }}>
+                  <button
+                    className="admin-icon-btn"
+                    title="Delete Session"
+                    onClick={() => handleDelete(s.id)}
+                    style={{ opacity: 0.7 }}
+                  >
+                    <TrashIcon />
+                  </button>
+                </span>
+              )}
             </div>
           ))}
           {!loading && filtered.length === 0 && (

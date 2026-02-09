@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createSession, type CreateSessionResult } from '../../services/adminApi';
+import { createSession, adminLogin, type CreateSessionResult } from '../../services/adminApi';
 
 function CheckCircleIcon() {
   return (
@@ -19,12 +19,72 @@ function CopyIcon() {
   );
 }
 
+function LockIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6F76A7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
 const INTERVIEWERS = [
   { id: '1', name: 'Mehmet Can Özdemir', initials: 'MÖ' },
   { id: '2', name: 'Utku Bekçi', initials: 'UB' },
 ];
 
+function PasswordGate({ onAuth }: { onAuth: () => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const token = await adminLogin(password);
+      sessionStorage.setItem('superadmin_token', token);
+      onAuth();
+    } catch {
+      setError('Invalid password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-gate">
+      <div className="admin-gate__card">
+        <LockIcon />
+        <h2 className="admin-gate__title">Superadmin Access</h2>
+        <p className="admin-gate__desc">Enter the admin password to continue.</p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+          <input
+            className="admin-input"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            autoFocus
+          />
+          {error && <p className="admin-gate__error">{error}</p>}
+          <button
+            className="admin-btn admin-btn--primary admin-btn--full"
+            type="submit"
+            disabled={loading || !password.trim()}
+          >
+            {loading ? 'Verifying...' : 'Login'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperadminAssignPage() {
+  const [authed, setAuthed] = useState(() => !!sessionStorage.getItem('superadmin_token'));
   const [candidateName, setCandidateName] = useState('');
   const [interviewerId, setInterviewerId] = useState('');
   const [notes, setNotes] = useState('');
@@ -32,6 +92,10 @@ export default function SuperadminAssignPage() {
   const [result, setResult] = useState<CreateSessionResult | null>(null);
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  if (!authed) {
+    return <PasswordGate onAuth={() => setAuthed(true)} />;
+  }
 
   const selectedInterviewer = INTERVIEWERS.find(i => i.id === interviewerId);
 

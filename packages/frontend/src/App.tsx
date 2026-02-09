@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import ToastContainer from './components/Toast';
 import InterviewPage from './pages/InterviewPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import QuestionBankPage from './pages/admin/QuestionBankPage';
@@ -26,38 +26,10 @@ export async function resolveToken(token: string): Promise<ResolveResult | null>
   }
 }
 
-function CreateSessionRedirect() {
-  const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function createAndRedirect() {
-      try {
-        const response = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-        const data = await response.json();
-        if (data.interviewer_token) {
-          navigate(`/interview/${data.interviewer_token}`, { replace: true });
-        } else {
-          setError('Session oluşturulamadı.');
-        }
-      } catch {
-        setError('Sunucuya bağlanılamadı.');
-      }
-    }
-    createAndRedirect();
-  }, [navigate]);
-
-  if (error) return <div>{error}</div>;
-  return <div>Yeni oturum oluşturuluyor...</div>;
-}
-
 export default function App() {
   return (
     <div className="app-container">
+      <ToastContainer />
       <Routes>
         <Route path="/interview/:token" element={<InterviewPage />} />
         <Route path="/admin" element={<AdminLayout />}>
@@ -67,7 +39,7 @@ export default function App() {
           <Route path="sessions/:id/report" element={<SessionReportPage />} />
           <Route path="assign" element={<SuperadminAssignPage />} />
         </Route>
-        <Route path="*" element={<CreateSessionRedirect />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </div>
   );

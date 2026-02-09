@@ -45,5 +45,17 @@
             return true;
         }
 
+        public function replaceSessionQuestions(string $sessionId, array $questionIds): void {
+            $db = Database::getConnection();
+            // Delete all existing assignments
+            $del = $db->prepare('DELETE FROM session_questions WHERE session_id = ?');
+            $del->execute([$sessionId]);
+            // Insert new assignments in order
+            $ins = $db->prepare('INSERT INTO session_questions (session_id, question_id, sort_order) VALUES (?, ?, ?)');
+            foreach ($questionIds as $i => $qid) {
+                $ins->execute([$sessionId, $qid, $i]);
+            }
+        }
+
     }
 ?>

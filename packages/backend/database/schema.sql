@@ -61,3 +61,8 @@ CREATE TABLE IF NOT EXISTS code_snapshots (
     ALTER TABLE questions ADD COLUMN template_files_json TEXT;
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
