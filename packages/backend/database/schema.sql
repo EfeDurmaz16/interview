@@ -55,5 +55,9 @@ CREATE TABLE IF NOT EXISTS code_snapshots (
     code TEXT NOT NULL,
     is_submission INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ALTER TABLE code_snapshots ADD COLUMN files_json TEXT;
+    ALTER TABLE code_snapshots ADD COLUMN entry_file TEXT DEFAULT 'solution.php';
+    ALTER TABLE code_snapshots ADD COLUMN active_file TEXT DEFAULT 'solution.php';
+    ALTER TABLE questions ADD COLUMN template_files_json TEXT;
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
