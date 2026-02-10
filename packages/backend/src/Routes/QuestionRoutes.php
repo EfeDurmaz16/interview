@@ -3,8 +3,27 @@
 class QuestionRoutes {
     public static function register(Router $router): void {
         $questionService = new QuestionService();
+        $authService = new AuthService(new TokenService());
+        $settings = new Settings();
 
-        $router->get('/api/questions/bank', function ($params, $body) use ($questionService) {
+        $router->get('/api/questions/bank', function ($params, $body) use ($questionService, $authService, $settings) {
+            $resolved = $authService->resolveSessionRoleFromBearer();
+
+            if ($resolved === null) {
+                $token = $authService->getBearerToken();
+
+                if ($token !== null) {
+                    $hash = hash('sha256', $token);
+                    $stored = $settings->get('admin_token_' . $hash);
+                    if ($stored) {
+                        $resolved = [
+                            'role' => 'superadmin',
+                        ];
+                    }
+                }
+            }
+
+            $authService->requireRoles($resolved, ['interviewer', 'admin', 'superadmin']);
             json($questionService->getBank());
         });
 
@@ -25,10 +44,12 @@ class QuestionRoutes {
         // Batch replace session questions
         $router->put('/api/sessions/:id/questions', function ($params, $body) use ($questionService) {
             $questionIds = $body['question_ids'] ?? [];
+
             if (!is_array($questionIds)) {
                 json(['error' => 'question_ids must be an array'], 400);
                 return;
             }
+
             $questionService->replaceSessionQuestions($params['id'], $questionIds);
             json(['success' => true]);
         });

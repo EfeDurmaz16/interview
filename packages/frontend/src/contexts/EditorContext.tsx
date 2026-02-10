@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useCodeSync, type NavPermission } from '../hooks/useCodeSync';
-import { WSMessageType } from '@jotform-interview/shared';
+import { WSMessageType, type ActiveQuestionPayload } from '@jotform-interview/shared';
 import { runPhp } from '../services/phpWasm';
 import type { TLEditorSnapshot } from '@tldraw/tldraw';
 
@@ -29,6 +29,7 @@ const EditorContext = createContext<{
   submitState: { status: 'idle' | 'sending' | 'sent' | 'error'; lastSentAt?: number; error?: string };
   lastRemoteSubmission?: { questionId?: string; at: number } | null;
   whiteboardSnapshot: TLEditorSnapshot | null;
+  activeQuestion: ActiveQuestionPayload | null;
   handleCodeChange: (newCode: string) => void;
   handleRun: () => void;
   handleSubmit: (questionId?: string, autoAdvance?: boolean) => Promise<string | void>;
@@ -65,9 +66,9 @@ export function EditorProvider({
     error?: string;
   }>({ status: 'idle' });
   const [lastRemoteSubmission, setLastRemoteSubmission] = useState<{ questionId?: string; at: number } | null>(null);
+  const [activeQuestion, setActiveQuestion] = useState<ActiveQuestionPayload | null>(null);
   const [whiteboardSnapshot, setWhiteboardSnapshot] = useState<TLEditorSnapshot | null>(null);
   const getNextQuestionIdRef = useRef<(() => string | null) | null>(null);
-
   const {
     sendCodeChange,
     sendRun,
@@ -105,8 +106,10 @@ export function EditorProvider({
     } else if (lastMessage.type === WSMessageType.SET_QUESTION) {
       const incomingQuestionId = lastMessage.payload?.question_id;
       const incomingNavPermission = lastMessage.payload?.nav_permission as NavPermission | undefined;
+      const incomingActiveQuestion = lastMessage.payload?.question as ActiveQuestionPayload | undefined;
       if (incomingQuestionId) setCurrentQuestionId(incomingQuestionId);
       if (incomingNavPermission) setNavPermission(incomingNavPermission);
+      if (incomingActiveQuestion) setActiveQuestion(incomingActiveQuestion);
       if (incomingQuestionId && lastMessage.role === 'interviewer') {
         setInterviewerQuestionId(incomingQuestionId);
       }
@@ -296,6 +299,7 @@ export function EditorProvider({
         submitState,
         lastRemoteSubmission,
         whiteboardSnapshot,
+        activeQuestion,
         handleCodeChange,
         handleRun,
         handleSubmit,

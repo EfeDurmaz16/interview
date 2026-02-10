@@ -55,6 +55,27 @@ cd ../..
 
 echo -e "${GREEN}✅ Database hazır${NC}"
 
+# Question seed (varsayılan: açık)
+# Kapatmak için: AUTO_SEED=0 ./start.sh
+AUTO_SEED=${AUTO_SEED:-1}
+if [ "${AUTO_SEED}" = "1" ]; then
+    echo -e "${YELLOW}Question seed uygulanıyor...${NC}"
+    cd packages/backend
+    if [ -f "bin/seed.php" ] && [ -f "seeds/questions.json" ]; then
+        SEED_OUTPUT=$(php bin/seed.php 2>&1)
+        SEED_EXIT_CODE=$?
+        if [ ${SEED_EXIT_CODE} -ne 0 ]; then
+            echo -e "${RED}❌ Seed işlemi başarısız:${NC}"
+            echo "${SEED_OUTPUT}"
+            exit 1
+        fi
+        echo -e "${GREEN}✅ ${SEED_OUTPUT}${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Seed dosyaları bulunamadı, seed atlandı.${NC}"
+    fi
+    cd ../..
+fi
+
 # WS port seçimi (8080 dolu olabiliyor)
 WS_PORT=${WS_PORT:-8080}
 if command -v lsof &> /dev/null; then

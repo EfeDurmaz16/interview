@@ -33,8 +33,39 @@ function safeJsonParse<T>(value: unknown, fallback: T): T {
   }
 }
 
+function resolveInterviewTokenFromPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const match = window.location.pathname.match(/^\/interview\/([^/?#]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+function buildQuestionBankAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+
+  const superadminToken = sessionStorage.getItem('superadmin_token');
+  if (superadminToken) {
+    return { Authorization: `Bearer ${superadminToken}` };
+  }
+
+  const interviewToken = resolveInterviewTokenFromPath();
+  if (interviewToken) {
+    return { Authorization: `Bearer ${interviewToken}` };
+  }
+
+  return {};
+}
+
 export async function fetchQuestionBank(): Promise<QuestionBankQuestion[]> {
-  const res = await fetch('/api/questions/bank');
+  const res = await fetch('/api/questions/bank', {
+    headers: {
+      ...buildQuestionBankAuthHeaders(),
+    },
+  });
   if (!res.ok) {
     throw new Error(`Failed to load question bank (${res.status})`);
   }
@@ -67,4 +98,3 @@ export async function fetchQuestionBank(): Promise<QuestionBankQuestion[]> {
     })
     .filter((q) => q.id && q.title);
 }
-

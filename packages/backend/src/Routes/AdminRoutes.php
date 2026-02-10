@@ -10,17 +10,18 @@ class AdminRoutes {
 
         // --- Auth ---
 
-        $requireAuth = function () use ($settings): bool {
+        $requireSuperadmin = function () use ($settings): bool {
             $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
             if (!str_starts_with($header, 'Bearer ')) {
-                json(['error' => 'Unauthorized'], 401);
+                json(['error' => 'Forbidden'], 403);
                 return false;
             }
+
             $token = substr($header, 7);
             $hash = hash('sha256', $token);
             $stored = $settings->get('admin_token_' . $hash);
             if (!$stored) {
-                json(['error' => 'Unauthorized'], 401);
+                json(['error' => 'Forbidden'], 403);
                 return false;
             }
             return true;
@@ -43,15 +44,15 @@ class AdminRoutes {
         // --- Question CRUD (protected) ---
 
         // Create question
-        $router->post('/api/admin/questions', function ($params, $body) use ($questionService, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->post('/api/admin/questions', function ($params, $body) use ($questionService, $requireSuperadmin) {
+            if (!$requireSuperadmin()) return;
             $result = $questionService->createQuestion($body);
             json($result, 201);
         });
 
         // Update question
-        $router->put('/api/admin/questions/:id', function ($params, $body) use ($questionService, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->put('/api/admin/questions/:id', function ($params, $body) use ($questionService, $requireSuperadmin) {
+            if (!$requireSuperadmin()) return;
             $result = $questionService->updateQuestion($params['id'], $body);
             if ($result === null) {
                 json(['error' => 'Question not found'], 404);
@@ -61,8 +62,8 @@ class AdminRoutes {
         });
 
         // Delete question
-        $router->delete('/api/admin/questions/:id', function ($params, $body) use ($questionService, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->delete('/api/admin/questions/:id', function ($params, $body) use ($questionService, $requireSuperadmin) {
+            if (!$requireSuperadmin()) return;
             $deleted = $questionService->deleteQuestion($params['id']);
             if (!$deleted) {
                 json(['error' => 'Question not found'], 404);
@@ -71,26 +72,25 @@ class AdminRoutes {
             json(['success' => true]);
         });
 
-        // --- Session Listing (protected) ---
+        // --- Session Listing (admin read-only allowed) ---
 
-        $router->get('/api/admin/sessions', function ($params, $body) use ($sessionModel, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->get('/api/admin/sessions', function ($params, $body) use ($sessionModel) {
             $sessions = $sessionModel->findAll();
             json($sessions);
         });
 
-        // --- Create session (protected) ---
+        // --- Create session (superadmin only) ---
 
-        $router->post('/api/admin/sessions', function ($params, $body) use ($sessionService, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->post('/api/admin/sessions', function ($params, $body) use ($sessionService, $requireSuperadmin) {
+            if (!$requireSuperadmin()) return;
             $result = $sessionService->createSession($body['candidate_name'] ?? null);
             json($result, 201);
         });
 
-        // --- Delete session (protected) ---
+        // --- Delete session (superadmin only) ---
 
-        $router->delete('/api/admin/sessions/:id', function ($params, $body) use ($sessionModel, $requireAuth) {
-            if (!$requireAuth()) return;
+        $router->delete('/api/admin/sessions/:id', function ($params, $body) use ($sessionModel, $requireSuperadmin) {
+            if (!$requireSuperadmin()) return;
             $session = $sessionModel->findById($params['id']);
             if (!$session) {
                 json(['error' => 'Session not found'], 404);

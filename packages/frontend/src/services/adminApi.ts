@@ -2,7 +2,7 @@
 import { showToast } from '../components/Toast';
 
 function checkUnauthorized(res: Response): void {
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     showToast('You are not authorized for this action');
     sessionStorage.removeItem('superadmin_token');
   }
@@ -59,7 +59,10 @@ export async function adminLogin(password: string): Promise<string> {
 // --- Questions ---
 
 export async function fetchQuestions(): Promise<QuestionData[]> {
-  const res = await fetch('/api/questions/bank');
+  const res = await fetch('/api/questions/bank', {
+    headers: { ...authHeaders() },
+  });
+  checkUnauthorized(res);
   if (!res.ok) throw new Error('Failed to fetch questions');
   return res.json();
 }

@@ -18,6 +18,7 @@ function Icon({ name, size = 18, color }: { name: string; size?: number; color?:
 export default function QuestionBankPage() {
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const isSuperadmin = !!sessionStorage.getItem('superadmin_token');
 
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -79,6 +80,7 @@ export default function QuestionBankPage() {
   }
 
   async function handleSave() {
+    if (!isSuperadmin) return;
     if (!formTitle.trim()) return;
     setIsSaving(true);
     try {
@@ -109,6 +111,7 @@ export default function QuestionBankPage() {
   }
 
   async function handleDelete(id: string) {
+    if (!isSuperadmin) return;
     if (!window.confirm('Are you sure you want to delete this question?')) return;
     try {
       await deleteQuestion(id);
@@ -121,6 +124,11 @@ export default function QuestionBankPage() {
   return (
     <>
       <h1 className="admin-page-title">Question Bank</h1>
+      {!isSuperadmin && (
+        <div className="admin-empty" style={{ marginBottom: 12 }}>
+          <div>Read-only mode. Superadmin login is required for create, edit and delete actions.</div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="admin-filters">
@@ -144,7 +152,7 @@ export default function QuestionBankPage() {
           <span className="admin-table-header-cell admin-col--title">Title</span>
           <span className="admin-table-header-cell admin-col--difficulty">Difficulty</span>
           <span className="admin-table-header-cell admin-col--category">Category</span>
-          <span className="admin-table-header-cell admin-col--actions">Actions</span>
+          {isSuperadmin && <span className="admin-table-header-cell admin-col--actions">Actions</span>}
         </div>
         <div className="admin-table-body">
           {loading && (
@@ -157,26 +165,28 @@ export default function QuestionBankPage() {
                 {q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1)}
               </span>
               <span className="admin-table-cell admin-col--category">{q.category}</span>
-              <span className="admin-table-cell admin-col--actions">
-                <button className="admin-icon-btn" title="Edit" onClick={() => openEditDrawer(q)}>
-                  <Icon name="edit" size={18} color="#6F76A7" />
-                </button>
-                <button className="admin-icon-btn admin-icon-btn--danger" title="Delete" onClick={() => handleDelete(q.id)}>
-                  <Icon name="trash" size={18} color="#F23A3C" />
-                </button>
-              </span>
+              {isSuperadmin && (
+                <span className="admin-table-cell admin-col--actions">
+                  <button className="admin-icon-btn" title="Edit" onClick={() => openEditDrawer(q)}>
+                    <Icon name="edit" size={18} color="#6F76A7" />
+                  </button>
+                  <button className="admin-icon-btn admin-icon-btn--danger" title="Delete" onClick={() => handleDelete(q.id)}>
+                    <Icon name="trash" size={18} color="#F23A3C" />
+                  </button>
+                </span>
+              )}
             </div>
           ))}
           {!loading && filtered.length === 0 && (
             <div className="admin-empty">
-              <div>No questions found. Click "Add Question" to create one.</div>
+              <div>{isSuperadmin ? 'No questions found. Click "Add Question" to create one.' : 'No questions found.'}</div>
             </div>
           )}
         </div>
       </div>
 
       {/* FAB to open drawer */}
-      {!drawerOpen && (
+      {isSuperadmin && !drawerOpen && (
         <button
           className="admin-btn admin-btn--primary"
           style={{ position: 'fixed', bottom: 32, right: 32, borderRadius: 24, height: 48, padding: '0 24px', boxShadow: '0 4px 16px #FF610040' }}
@@ -188,7 +198,7 @@ export default function QuestionBankPage() {
       )}
 
       {/* Right Drawer */}
-      {drawerOpen && (
+      {isSuperadmin && drawerOpen && (
         <div className="admin-drawer-overlay">
           <div className="admin-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
           <div className="admin-drawer">
