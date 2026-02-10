@@ -5,22 +5,44 @@ class AdminRoutes {
         $questionService = new QuestionService();
         $sessionModel = new Session();
         $tokenService = new TokenService();
+        $authService = new AuthService($tokenService);
         $sessionService = new SessionService($tokenService, $sessionModel);
         $settings = new Settings();
 
         // --- Auth ---
 
-        $requireSuperadmin = function () use ($settings): bool {
-            $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-            if (!str_starts_with($header, 'Bearer ')) {
+        $resolveRole = function () use ($authService, $settings): ?string {
+            $resolved = $authService->resolveSessionRoleFromBearer();
+            if ($resolved !== null && !empty($resolved['role'])) {
+                return (string) $resolved['role'];
+            }
+
+            $token = $authService->getBearerToken();
+            if ($token === null) {
+                // No bearer token on admin panel requests: treat as interviewer.
+                return 'interviewer';
+            }
+
+            $hash = hash('sha256', $token);
+            $stored = $settings->get('admin_token_' . $hash);
+            if ($stored) {
+                return 'superadmin';
+            }
+
+            return null;
+        };
+
+        $requireInterviewerOrSuperadmin = function () use ($resolveRole): bool {
+            $role = $resolveRole();
+            if ($role !== 'interviewer' && $role !== 'superadmin') {
                 json(['error' => 'Forbidden'], 403);
                 return false;
             }
+            return true;
+        };
 
-            $token = substr($header, 7);
-            $hash = hash('sha256', $token);
-            $stored = $settings->get('admin_token_' . $hash);
-            if (!$stored) {
+        $requireSuperadmin = function () use ($resolveRole): bool {
+            if ($resolveRole() !== 'superadmin') {
                 json(['error' => 'Forbidden'], 403);
                 return false;
             }
@@ -43,14 +65,14 @@ class AdminRoutes {
 
         // --- Question CRUD (protected) ---
 
-        // Create question
-        $router->post('/api/admin/questions', function ($params, $body) use ($questionService, $requireSuperadmin) {
-            if (!$requireSuperadmin()) return;
+        // Create question (interviewer + superadmin)
+        $router->post('/api/admin/questions', function ($params, $body) use ($questionService, $requireInterviewerOrSuperadmin) {
+            if (!$requireInterviewerOrSuperadmin()) return;
             $result = $questionService->createQuestion($body);
             json($result, 201);
         });
 
-        // Update question
+        // Update question (superadmin only for now)
         $router->put('/api/admin/questions/:id', function ($params, $body) use ($questionService, $requireSuperadmin) {
             if (!$requireSuperadmin()) return;
             $result = $questionService->updateQuestion($params['id'], $body);
@@ -72,9 +94,10 @@ class AdminRoutes {
             json(['success' => true]);
         });
 
-        // --- Session Listing (admin read-only allowed) ---
+        // --- Session Listing (interviewer + superadmin) ---
 
-        $router->get('/api/admin/sessions', function ($params, $body) use ($sessionModel) {
+        $router->get('/api/admin/sessions', function ($params, $body) use ($sessionModel, $requireInterviewerOrSuperadmin) {
+            if (!$requireInterviewerOrSuperadmin()) return;
             $sessions = $sessionModel->findAll();
             json($sessions);
         });

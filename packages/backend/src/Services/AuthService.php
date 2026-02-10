@@ -79,13 +79,4 @@ class AuthService {
         }
     }
 
-    public function requireAdmin(): void {
-        $expected = getenv('ADMIN_KEY') ?: '';
-        $provided = $this->getHeader('X-Admin-Key') ?? '';
-
-        if ($expected === '' || !hash_equals($expected, $provided)) {
-            json(['error' => 'Forbidden'], 403);
-            exit;
-        }
-    }
 }

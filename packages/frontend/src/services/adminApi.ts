@@ -41,8 +41,17 @@ export interface CreateSessionResult {
 // --- Auth helpers ---
 
 function authHeaders(): Record<string, string> {
-  const token = sessionStorage.getItem('superadmin_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const superadminToken = sessionStorage.getItem('superadmin_token');
+  if (superadminToken) {
+    return { Authorization: `Bearer ${superadminToken}` };
+  }
+
+  const interviewerToken = sessionStorage.getItem('interviewer_token') || localStorage.getItem('interviewer_token');
+  if (interviewerToken) {
+    return { Authorization: `Bearer ${interviewerToken}` };
+  }
+
+  return {};
 }
 
 export async function adminLogin(password: string): Promise<string> {
@@ -59,10 +68,15 @@ export async function adminLogin(password: string): Promise<string> {
 // --- Questions ---
 
 export async function fetchQuestions(): Promise<QuestionData[]> {
-  const res = await fetch('/api/questions/bank', {
+  let res = await fetch('/api/questions/bank', {
     headers: { ...authHeaders() },
   });
-  checkUnauthorized(res);
+  if (res.status === 401 || res.status === 403) {
+    checkUnauthorized(res);
+    res = await fetch('/api/questions/bank', {
+      headers: { ...authHeaders() },
+    });
+  }
   if (!res.ok) throw new Error('Failed to fetch questions');
   return res.json();
 }

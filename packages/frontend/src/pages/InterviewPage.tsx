@@ -23,6 +23,16 @@ export default function InterviewPage() {
       const result = await resolveToken(token);
       setResolveData(result);
 
+      if (result?.role === 'interviewer' && token) {
+        sessionStorage.setItem('interviewer_token', token);
+        localStorage.setItem('interviewer_token', token);
+        sessionStorage.setItem('session_role', 'interviewer');
+      } else if (result?.role === 'candidate') {
+        sessionStorage.setItem('session_role', 'candidate');
+        sessionStorage.removeItem('interviewer_token');
+        localStorage.removeItem('interviewer_token');
+      }
+
       if (result?.session_id) {
         try {
           const [sessionRes, questionsRes] = await Promise.all([

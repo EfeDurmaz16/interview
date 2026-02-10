@@ -19,6 +19,11 @@ export default function QuestionBankPage() {
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loading, setLoading] = useState(true);
   const isSuperadmin = !!sessionStorage.getItem('superadmin_token');
+  const isCandidate = sessionStorage.getItem('session_role') === 'candidate';
+  const hasInterviewerToken = !!(sessionStorage.getItem('interviewer_token') || localStorage.getItem('interviewer_token'));
+  const canCreateQuestion = isSuperadmin || hasInterviewerToken || !isCandidate;
+  const canEditQuestion = isSuperadmin; // pending product decision for interviewer edit
+  const canDeleteQuestion = isSuperadmin;
 
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -35,8 +40,23 @@ export default function QuestionBankPage() {
 
   // Fetch questions on mount
   useEffect(() => {
+    if (isCandidate && !isSuperadmin) {
+      setLoading(false);
+      return;
+    }
     loadQuestions();
-  }, []);
+  }, [isCandidate, isSuperadmin]);
+
+  if (isCandidate && !isSuperadmin) {
+    return (
+      <>
+        <h1 className="admin-page-title">Question Bank</h1>
+        <div className="admin-empty" style={{ marginBottom: 12 }}>
+          <div>Interviewer token is required to access this page.</div>
+        </div>
+      </>
+    );
+  }
 
   async function loadQuestions() {
     setLoading(true);
@@ -70,6 +90,7 @@ export default function QuestionBankPage() {
   }
 
   function openEditDrawer(q: QuestionData) {
+    if (!canEditQuestion) return;
     setEditingQuestion(q);
     setFormTitle(q.title);
     setFormDesc(q.description);
@@ -80,11 +101,11 @@ export default function QuestionBankPage() {
   }
 
   async function handleSave() {
-    if (!isSuperadmin) return;
+    if (!canCreateQuestion) return;
     if (!formTitle.trim()) return;
     setIsSaving(true);
     try {
-      if (editingQuestion) {
+      if (editingQuestion && canEditQuestion) {
         await updateQuestion(editingQuestion.id, {
           title: formTitle,
           description: formDesc,
@@ -111,7 +132,7 @@ export default function QuestionBankPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!isSuperadmin) return;
+    if (!canDeleteQuestion) return;
     if (!window.confirm('Are you sure you want to delete this question?')) return;
     try {
       await deleteQuestion(id);
@@ -124,11 +145,6 @@ export default function QuestionBankPage() {
   return (
     <>
       <h1 className="admin-page-title">Question Bank</h1>
-      {!isSuperadmin && (
-        <div className="admin-empty" style={{ marginBottom: 12 }}>
-          <div>Read-only mode. Superadmin login is required for create, edit and delete actions.</div>
-        </div>
-      )}
 
       {/* Filters */}
       <div className="admin-filters">
@@ -152,7 +168,7 @@ export default function QuestionBankPage() {
           <span className="admin-table-header-cell admin-col--title">Title</span>
           <span className="admin-table-header-cell admin-col--difficulty">Difficulty</span>
           <span className="admin-table-header-cell admin-col--category">Category</span>
-          {isSuperadmin && <span className="admin-table-header-cell admin-col--actions">Actions</span>}
+          {(canEditQuestion || canDeleteQuestion) && <span className="admin-table-header-cell admin-col--actions">Actions</span>}
         </div>
         <div className="admin-table-body">
           {loading && (
@@ -165,28 +181,32 @@ export default function QuestionBankPage() {
                 {q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1)}
               </span>
               <span className="admin-table-cell admin-col--category">{q.category}</span>
-              {isSuperadmin && (
+              {(canEditQuestion || canDeleteQuestion) && (
                 <span className="admin-table-cell admin-col--actions">
-                  <button className="admin-icon-btn" title="Edit" onClick={() => openEditDrawer(q)}>
-                    <Icon name="edit" size={18} color="#6F76A7" />
-                  </button>
-                  <button className="admin-icon-btn admin-icon-btn--danger" title="Delete" onClick={() => handleDelete(q.id)}>
-                    <Icon name="trash" size={18} color="#F23A3C" />
-                  </button>
+                  {canEditQuestion && (
+                    <button className="admin-icon-btn" title="Edit" onClick={() => openEditDrawer(q)}>
+                      <Icon name="edit" size={18} color="#6F76A7" />
+                    </button>
+                  )}
+                  {canDeleteQuestion && (
+                    <button className="admin-icon-btn admin-icon-btn--danger" title="Delete" onClick={() => handleDelete(q.id)}>
+                      <Icon name="trash" size={18} color="#F23A3C" />
+                    </button>
+                  )}
                 </span>
               )}
             </div>
           ))}
           {!loading && filtered.length === 0 && (
             <div className="admin-empty">
-              <div>{isSuperadmin ? 'No questions found. Click "Add Question" to create one.' : 'No questions found.'}</div>
+              <div>{canCreateQuestion ? 'No questions found. Click "Add Question" to create one.' : 'No questions found.'}</div>
             </div>
           )}
         </div>
       </div>
 
       {/* FAB to open drawer */}
-      {isSuperadmin && !drawerOpen && (
+      {canCreateQuestion && !drawerOpen && (
         <button
           className="admin-btn admin-btn--primary"
           style={{ position: 'fixed', bottom: 32, right: 32, borderRadius: 24, height: 48, padding: '0 24px', boxShadow: '0 4px 16px #FF610040' }}
@@ -198,7 +218,7 @@ export default function QuestionBankPage() {
       )}
 
       {/* Right Drawer */}
-      {isSuperadmin && drawerOpen && (
+      {canCreateQuestion && drawerOpen && (
         <div className="admin-drawer-overlay">
           <div className="admin-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
           <div className="admin-drawer">

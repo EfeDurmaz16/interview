@@ -47,14 +47,19 @@ function resolveInterviewTokenFromPath(): string | null {
 function buildQuestionBankAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
 
+  const interviewToken = resolveInterviewTokenFromPath();
+  if (interviewToken) {
+    return { Authorization: `Bearer ${interviewToken}` };
+  }
+
   const superadminToken = sessionStorage.getItem('superadmin_token');
   if (superadminToken) {
     return { Authorization: `Bearer ${superadminToken}` };
   }
 
-  const interviewToken = resolveInterviewTokenFromPath();
-  if (interviewToken) {
-    return { Authorization: `Bearer ${interviewToken}` };
+  const interviewerToken = sessionStorage.getItem('interviewer_token') || localStorage.getItem('interviewer_token');
+  if (interviewerToken) {
+    return { Authorization: `Bearer ${interviewerToken}` };
   }
 
   return {};
