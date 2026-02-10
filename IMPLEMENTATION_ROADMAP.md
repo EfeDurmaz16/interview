@@ -500,7 +500,6 @@ ALTER TABLE questions ADD COLUMN kind TEXT NOT NULL DEFAULT 'coding'
 - [ ] Question metadata visible in question card
 
 ---
-
 ## Phase 4: Admin Panel
 
 > **Goal**: Move question bank management to dedicated admin panel

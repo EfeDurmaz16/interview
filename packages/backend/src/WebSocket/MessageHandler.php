@@ -57,6 +57,9 @@ class MessageHandler {
             case 'evaluation_update':
                 $this->onBroadcast($from, $type, $payload);
                 break;
+            case 'whiteboard_snapshot':
+                $this->onBroadcast($from, $type, $payload);
+                break;
             default:
                 break;
         }
@@ -94,6 +97,8 @@ class MessageHandler {
         $sessionId = $info['session_id'] ?? null;
         if (!is_string($sessionId) || $sessionId === '') return;
 
+        error_log("[WebSocket] Broadcasting $type from role: " . ($info['role'] ?? 'unknown'));
+
         $this->broadcastJson($sessionId, [
             'type' => $type,
             'payload' => $payload,
@@ -110,9 +115,10 @@ class MessageHandler {
 
         $questionId = $payload['question_id'] ?? null;
         $code = $payload['code'] ?? null;
+        $whiteboardSnapshot = $payload['whiteboard_snapshot'] ?? null;
 
         if (is_string($questionId) && is_string($code)) {
-            $this->codeSnapshot->create($sessionId, $questionId, $code, true);
+            $this->codeSnapshot->create($sessionId, $questionId, $code, true, $whiteboardSnapshot);
         }
 
         $this->onBroadcast($from, 'submit_code', $payload);

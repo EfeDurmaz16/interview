@@ -1,15 +1,15 @@
 <?php
 
 class CodeSnapshot {
-    public function create(string $sessionId, string $questionId, string $code, bool $isSubmission): string {
+    public function create(string $sessionId, string $questionId, string $code, bool $isSubmission, ?string $whiteboardSnapshot = null): string {
         $id = 'snap_' . uniqid();
         $db = Database::getConnection();
 
         $stmt = $db->prepare(
-            'INSERT INTO code_snapshots (id, session_id, question_id, code, is_submission)
-             VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO code_snapshots (id, session_id, question_id, code, is_submission, whiteboard_snapshot)
+             VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$id, $sessionId, $questionId, $code, $isSubmission ? 1 : 0]);
+        $stmt->execute([$id, $sessionId, $questionId, $code, $isSubmission ? 1 : 0, $whiteboardSnapshot]);
         return $id;
     }
 

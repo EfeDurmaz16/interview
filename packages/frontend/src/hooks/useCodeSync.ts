@@ -1,5 +1,6 @@
 import { useWebSocket } from "./useWebSocket";
 import { WSMessageType } from "@jotform-interview/shared";
+import type { TLEditorSnapshot } from '@tldraw/tldraw';
 
 export type NavPermission = 'none' | 'prev_only' | 'both';
 
@@ -20,10 +21,10 @@ export function useCodeSync(token: string) {
     });
   };
 
-  const sendSubmit = (code: string, questionId: string) => {
+  const sendSubmit = (code: string, questionId: string, whiteboardSnapshot?: string) => {
     sendMessage({
       type: WSMessageType.SUBMIT_CODE,
-      payload: { code, question_id: questionId },
+      payload: { code, question_id: questionId, whiteboard_snapshot: whiteboardSnapshot },
     });
   };
 
@@ -68,6 +69,14 @@ export function useCodeSync(token: string) {
     });
   };
 
+  const sendWhiteboardSnapshot = (snapshot: TLEditorSnapshot) => {
+    console.log('[useCodeSync] Sending whiteboard snapshot');
+    sendMessage({
+      type: WSMessageType.WHITEBOARD_SNAPSHOT,
+      payload: { snapshot },
+    });
+  };
+
   return {
     sendCodeChange,
     sendRun,
@@ -77,6 +86,7 @@ export function useCodeSync(token: string) {
     sendCodeOutput,
     sendSessionStarted,
     sendSessionEnded,
+    sendWhiteboardSnapshot,
     lastMessage,
     status,
     wsUrl,

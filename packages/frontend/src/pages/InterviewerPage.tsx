@@ -1,7 +1,7 @@
 import Editor from '@monaco-editor/react';
 import Header from '../components/Header/Header';
 import InterviewerSidebar from '../components/Sidebar/InterviewerSidebar';
-import CodeEditor from '../components/Editor/CodeEditor';
+import EditorWithWhiteboard from '../components/Editor/EditorWithWhiteboard';
 import OutputPanel from '../components/Output/OutputPanel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -48,11 +48,13 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     lastMessage,
     currentQuestionId,
     navPermission,
+    whiteboardSnapshot,
     handleCodeChange,
     handleRun,
     handleSetQuestion,
     handleSetNavPermission,
     handleClear,
+    handleWhiteboardChange,
     broadcastSessionStarted,
     broadcastSessionEnded,
   } = useEditor();
@@ -316,7 +318,14 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
           onSelectQuestionId={(id) => handleSetQuestion(id, { navPermission })}
         />
         <div className="center-panel">
-          <CodeEditor externalCode={code} onCodeChange={handleCodeChange} onRun={handleRun} onClear={handleClear} />
+          <EditorWithWhiteboard 
+            externalCode={code} 
+            onCodeChange={handleCodeChange} 
+            onRun={handleRun} 
+            onClear={handleClear}
+            onWhiteboardChange={handleWhiteboardChange}
+            externalWhiteboardSnapshot={whiteboardSnapshot}
+          />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
         </div>
         <div className="right-panel">

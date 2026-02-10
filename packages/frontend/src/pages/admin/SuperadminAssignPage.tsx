@@ -20,6 +20,7 @@ function CopyIcon() {
 }
 
 function LockIcon() {
+
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6F76A7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
@@ -57,7 +58,11 @@ function PasswordGate({ onAuth }: { onAuth: () => void }) {
   return (
     <div className="admin-gate">
       <div className="admin-gate__card">
+        
+        <div style={{display: 'flex', marginLeft: 'auto', marginRight: 'auto'}}  > 
         <LockIcon />
+        </div>
+
         <h2 className="admin-gate__title">Superadmin Access</h2>
         <p className="admin-gate__desc">Enter the admin password to continue.</p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>

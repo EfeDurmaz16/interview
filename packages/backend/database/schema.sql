@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS code_snapshots (
     files_json TEXT,
     entry_file TEXT DEFAULT 'solution.php',
     active_file TEXT DEFAULT 'solution.php',
+    whiteboard_snapshot TEXT,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 

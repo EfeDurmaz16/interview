@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { useCodeSync, type NavPermission } from '../hooks/useCodeSync';
 import { WSMessageType } from '@jotform-interview/shared';
 import { runPhp } from '../services/phpWasm';
+import type { TLEditorSnapshot } from '@tldraw/tldraw';
 
 type CodeOutputResult = {
   stdout?: string;
@@ -27,14 +28,18 @@ const EditorContext = createContext<{
   lastMessage: any | null;
   submitState: { status: 'idle' | 'sending' | 'sent' | 'error'; lastSentAt?: number; error?: string };
   lastRemoteSubmission?: { questionId?: string; at: number } | null;
+  whiteboardSnapshot: TLEditorSnapshot | null;
   handleCodeChange: (newCode: string) => void;
   handleRun: () => void;
-  handleSubmit: (questionId?: string) => void;
+  handleSubmit: (questionId?: string, autoAdvance?: boolean) => Promise<string | void>;
   handleClear: () => void;
   handleSetQuestion: (questionId: string, opts?: { navPermission?: NavPermission }) => void;
   handleSetNavPermission: (navPermission: NavPermission) => void;
+  handleWhiteboardChange: (snapshot: TLEditorSnapshot) => void;
   broadcastSessionStarted: (startedAt?: string, serverNow?: string) => void;
   broadcastSessionEnded: (reason?: string, serverNow?: string) => void;
+  getNextQuestionId?: () => string | null;
+  setGetNextQuestionId?: (fn: () => string | null) => void;
 } | undefined>(undefined);
 
 export function EditorProvider({ 
@@ -60,6 +65,8 @@ export function EditorProvider({
     error?: string;
   }>({ status: 'idle' });
   const [lastRemoteSubmission, setLastRemoteSubmission] = useState<{ questionId?: string; at: number } | null>(null);
+  const [whiteboardSnapshot, setWhiteboardSnapshot] = useState<TLEditorSnapshot | null>(null);
+  const getNextQuestionIdRef = useRef<(() => string | null) | null>(null);
 
   const {
     sendCodeChange,
@@ -70,6 +77,7 @@ export function EditorProvider({
     sendSetQuestionWithNavPermission,
     sendSessionStarted,
     sendSessionEnded,
+    sendWhiteboardSnapshot,
     lastMessage,
     status,
     wsUrl,
@@ -107,6 +115,12 @@ export function EditorProvider({
         questionId: lastMessage.payload?.question_id,
         at: Date.now(),
       });
+    } else if (lastMessage.type === WSMessageType.WHITEBOARD_SNAPSHOT) {
+      const snapshot = lastMessage.payload?.snapshot;
+      console.log('[EditorContext] Received whiteboard snapshot:', snapshot);
+      if (snapshot) {
+        setWhiteboardSnapshot(snapshot);
+      }
     }
   }, [lastMessage, code]);
 
@@ -159,16 +173,38 @@ export function EditorProvider({
   }, [code, sendRun, sendCodeOutput]);
 
   // handleSubmit: WS SUBMIT_CODE gönder
-  const handleSubmit = useCallback((qId?: string) => {
+  const handleSubmit = useCallback(async (qId?: string, autoAdvance: boolean = true) => {
     const resolvedQuestionId = qId || currentQuestionId || questionId;
     if (!resolvedQuestionId) {
       console.warn('handleSubmit: questionId is required');
       return;
     }
     setSubmitState({ status: 'sending' });
-    sendSubmit(code, resolvedQuestionId);
+    
+    // Get whiteboard snapshot if available
+    let whiteboardImage: string | undefined;
+    if (typeof (window as any).__exportWhiteboard === 'function') {
+      whiteboardImage = await (window as any).__exportWhiteboard();
+    }
+    
+    sendSubmit(code, resolvedQuestionId, whiteboardImage);
     setSubmitState({ status: 'sent', lastSentAt: Date.now() });
-  }, [code, currentQuestionId, questionId, sendSubmit]);
+    
+    // Auto advance to next question if enabled
+    if (autoAdvance && getNextQuestionIdRef.current) {
+      const nextId = getNextQuestionIdRef.current();
+      if (nextId) {
+        setTimeout(() => {
+          setCurrentQuestionId(nextId);
+          sendSetQuestion(nextId);
+        }, 500); // Small delay to show submit success
+      } else {
+        // This was the last question - trigger end interview confirmation
+        return 'last_question';
+      }
+    }
+    return 'submitted';
+  }, [code, currentQuestionId, questionId, sendSubmit, sendSetQuestion]);
 
   const handleClear = useCallback(() => {
     setIsRunning(false);
@@ -207,11 +243,38 @@ export function EditorProvider({
     });
   }, [sendSessionEnded]);
 
-  // Cleanup debounce timeout on unmount
+  const setGetNextQuestionId = useCallback((fn: () => string | null) => {
+    getNextQuestionIdRef.current = fn;
+  }, []);
+
+  const whiteboardDebounceRef = useRef<number | null>(null);
+  
+  const handleWhiteboardChange = useCallback((snapshot: TLEditorSnapshot) => {
+    console.log('[EditorContext] handleWhiteboardChange called');
+    
+    // Update local state immediately
+    setWhiteboardSnapshot(snapshot);
+    
+    // Debounce sending to WebSocket
+    if (whiteboardDebounceRef.current !== null) {
+      clearTimeout(whiteboardDebounceRef.current);
+    }
+    
+    whiteboardDebounceRef.current = window.setTimeout(() => {
+      console.log('[EditorContext] Sending whiteboard snapshot after debounce');
+      sendWhiteboardSnapshot(snapshot);
+      whiteboardDebounceRef.current = null;
+    }, 500);
+  }, [sendWhiteboardSnapshot]);
+
+  // Cleanup debounce timeouts on unmount
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current !== null) {
         clearTimeout(debounceTimeoutRef.current);
+      }
+      if (whiteboardDebounceRef.current !== null) {
+        clearTimeout(whiteboardDebounceRef.current);
       }
     };
   }, []);
@@ -232,14 +295,18 @@ export function EditorProvider({
         lastMessage,
         submitState,
         lastRemoteSubmission,
+        whiteboardSnapshot,
         handleCodeChange,
         handleRun,
         handleSubmit,
         handleClear,
         handleSetQuestion,
         handleSetNavPermission,
+        handleWhiteboardChange,
         broadcastSessionStarted,
         broadcastSessionEnded,
+        getNextQuestionId: getNextQuestionIdRef.current || undefined,
+        setGetNextQuestionId,
       }}
     >
       {children}
