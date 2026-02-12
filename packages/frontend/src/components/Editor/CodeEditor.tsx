@@ -2,7 +2,9 @@ import Editor from '@monaco-editor/react';
 import EditorToolbar from './EditorToolbar';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { OnMount } from '@monaco-editor/react';
-import { ensurePhpIntellisense } from '../../services/monacoPhpIntellisense';
+import { registerPhpSnippets } from '../../services/phpSnippets';
+import { connectLsp, disconnectLsp } from '../../services/lspClient';
+import { bridgeLspToMonaco } from '../../services/monacoLspBridge';
 
 const LANGUAGE_MAP: Record<string, string> = {
   PHP: 'php',
@@ -39,6 +41,16 @@ export default function CodeEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const hasSetupIntellisense = useRef(false);
+  // LSP bridge disposable — cleanup icin
+  const lspBridgeRef = useRef<import('monaco-editor').IDisposable | null>(null);
+
+  // LSP baglantisini component unmount'ta temizle
+  useEffect(() => {
+    return () => {
+      lspBridgeRef.current?.dispose();
+      disconnectLsp();
+    };
+  }, []);
 
   // Sync code from external source (e.g. WebSocket)
   useEffect(() => {
@@ -96,11 +108,27 @@ export default function CodeEditor({
     document.addEventListener('mouseup', onMouseUp);
   }, []);
 
-  const handleMount = useCallback<OnMount>((_editor, monaco) => {
+  const handleMount = useCallback<OnMount>((editorInstance, monaco) => {
     if (hasSetupIntellisense.current) return;
     hasSetupIntellisense.current = true;
 
-    ensurePhpIntellisense(monaco);
+    // 1) Snippet'leri hemen register et (senkron, aninda kullanilabilir)
+    registerPhpSnippets(monaco);
+
+    // 2) LSP'yi arka planda baglat (asenkron — WebSocket + handshake)
+    // Editor zaten snippet'lerle calisiyor, LSP hazir olunca
+    // completion/hover/diagnostics da aktif olacak
+    const currentCode = editorInstance.getModel()?.getValue() ?? '<?php\n';
+    connectLsp(currentCode)
+      .then((lsp) => {
+        // 3) LSP hazir — Monaco'ya bagla
+        lspBridgeRef.current = bridgeLspToMonaco(monaco, editorInstance, lsp);
+        console.log('[LSP] Connected and bridged to Monaco');
+      })
+      .catch((err) => {
+        // LSP baglanamazsa editor yine calisir, sadece snippet'lerle
+        console.warn('[LSP] Connection failed, falling back to snippets only:', err);
+      });
   }, []);
 
   return (

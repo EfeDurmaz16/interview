@@ -10,3 +10,4 @@ dist/
 packages/backend/database/interview.sqlite
 packages/frontend/.omc/
 packages/backend/.omc/
+AGENTS.md
