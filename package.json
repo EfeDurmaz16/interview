@@ -12,6 +12,9 @@
     "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "build": "npm run build --workspaces"
   },
+  "overrides": {
+    "vscode-jsonrpc": "8.2.0"
+  },
   "devDependencies": {
     "concurrently": "^8.2.0",
     "typescript": "^5.4.0"

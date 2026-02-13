@@ -1,6 +1,11 @@
-import type { QuestionBankQuestion } from '../../services/questionBank';
+import { useState } from 'react';
 
-type QuestionSummary = Pick<QuestionBankQuestion, 'id' | 'title' | 'difficulty' | 'category'>;
+type QuestionSummary = {
+  id: string;
+  title: string;
+  difficulty: string;
+  category?: string;
+};
 
 type EvalCriterion = {
   id: string;
@@ -34,6 +39,9 @@ export default function InterviewerSidebar({
   evaluationSaveError = null,
 }: InterviewerSidebarProps) {
   const activeId = activeQuestionId ?? questions[0]?.id;
+  const [scores, setScores] = useState<Record<string, number>>(
+    Object.fromEntries(DEFAULT_EVAL_CRITERIA.map((c) => [c.id, 0]))
+  );
 
   return (
     <aside className="sidebar sidebar--interviewer">
@@ -73,20 +81,11 @@ export default function InterviewerSidebar({
           </div>
         ))}
 
-        <div className="sidebar-section__title" style={{ marginTop: '1rem' }}>Notlar</div>
-        <textarea
-          className="sidebar__notes"
-          placeholder="Mulakat notlarinizi buraya yazin..."
-          value={evaluationNotes}
-          onChange={(e) => onEvaluationNotesChange?.(e.target.value)}
-        />
-
-        <div className={`sidebar__save-status sidebar__save-status--${evaluationSaveStatus}`}>
-          {evaluationSaveStatus === 'saving' ? 'Degerlendirme kaydediliyor...' : null}
-          {evaluationSaveStatus === 'saved' ? 'Degerlendirme kaydedildi' : null}
-          {evaluationSaveStatus === 'error' ? (evaluationSaveError || 'Degerlendirme kaydedilemedi') : null}
-        </div>
-      </div>
+      <div className="right-panel__title" style={{ marginTop: '1rem' }}>Notlar</div>
+      <textarea
+        className="right-panel__textarea"
+        placeholder="Mulakat notlarinizi buraya yazin..."
+      />
     </aside>
   );
 }

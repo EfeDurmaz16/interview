@@ -23,6 +23,7 @@
 
 .sidebar--interviewer {
   width: 280px;
+  height: fit-content;
 }
 
 .sidebar--interviewee {
@@ -36,6 +37,7 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  height: fit-content;
 }
 
 /* Right panel (interviewer notes) */

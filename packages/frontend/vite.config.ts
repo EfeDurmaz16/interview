@@ -30,6 +30,13 @@ export default defineConfig(({ mode }) => {
             proxy.on('proxyReqWs', stripCookies);
           },
         },
+        // LSP proxy — browser'dan gelen /lsp WebSocket isteklerini
+        // lsp-ws-proxy'ye (Intelephense gateway) yonlendirir
+        '/lsp': {
+          target: 'ws://127.0.0.1:9999',
+          ws: true,
+          rewrite: (path) => path.replace(/^\/lsp/, ''),
+        },
       },
     },
     optimizeDeps: {

@@ -818,7 +818,7 @@ public function runProject(
 ## Phase 9: Enhanced Editor Features
 
 > **Goal**: Improve syntax highlighting and auto-complete
-> **Duration**: 1-2 days
+> **Duration**: 1-2 days  
 
 ### Dev-B Tasks
 

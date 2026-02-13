@@ -544,6 +544,43 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
             </div>
           ) : null}
 
+          {/* Checklist */}
+          <div className="right-panel__title" style={{ marginTop: '1rem' }}>Degerlendirme Kontrol Listesi</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {evalCriteria.map((item) => {
+              const key = activeQuestion ? `${activeQuestion.id}:${item.id}` : item.id;
+              return (
+              <label
+                key={key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  color: checked[key] ? 'var(--jotform-success)' : 'var(--jotform-text)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!checked[key]}
+                  onChange={() => toggle(key)}
+                  style={{ accentColor: 'var(--jotform-success)', marginTop: 2, flexShrink: 0 }}
+                />
+                <span style={{ textDecoration: checked[key] ? 'line-through' : 'none' }}>
+                  {item.label} <span style={{ color: 'var(--jotform-text-light)' }}>({item.max_score})</span>
+                </span>
+              </label>
+            )})}
+          </div>
+          <div style={{
+            marginTop: '0.75rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            color: 'var(--jotform-text-light)',
+          }}>
+            {activeQuestion ? `${checklistCompletedCount} / ${evalCriteria.length} tamamlandi` : `0 / ${evalCriteria.length} tamamlandi`}
+          </div>
         </div>
       </div>
     </>
