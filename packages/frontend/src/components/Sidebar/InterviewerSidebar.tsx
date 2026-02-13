@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
-import type { QuestionBankQuestion } from '../../services/questionBank';
+import { useState } from 'react';
 
-type QuestionSummary = Pick<QuestionBankQuestion, 'id' | 'title' | 'difficulty' | 'category'>;
+type QuestionSummary = {
+  id: string;
+  title: string;
+  difficulty: string;
+  category?: string;
+};
 
 type EvalCriterion = {
   id: string;
@@ -28,14 +32,6 @@ export default function InterviewerSidebar({ questions, activeQuestionId, onSele
   const [scores, setScores] = useState<Record<string, number>>(
     Object.fromEntries(DEFAULT_EVAL_CRITERIA.map((c) => [c.id, 0]))
   );
-
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const q of questions) {
-      if (q.category) set.add(q.category);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [questions]);
 
   return (
     <aside className="sidebar sidebar--interviewer">
@@ -76,14 +72,11 @@ export default function InterviewerSidebar({ questions, activeQuestionId, onSele
         ))}
       </div>
 
-      <div className="sidebar-section">
-        <div className="sidebar-section__title">Question Bank</div>
-        {(categories.length ? categories : ['Arrays', 'Strings', 'Design']).map((cat) => (
-          <div key={cat} style={{ fontSize: '0.8125rem', padding: '0.375rem 0', color: 'var(--jotform-text-light)' }}>
-            {cat}
-          </div>
-        ))}
-      </div>
+      <div className="right-panel__title" style={{ marginTop: '1rem' }}>Notlar</div>
+      <textarea
+        className="right-panel__textarea"
+        placeholder="Mulakat notlarinizi buraya yazin..."
+      />
     </aside>
   );
 }

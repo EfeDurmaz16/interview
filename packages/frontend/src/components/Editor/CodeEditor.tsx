@@ -140,6 +140,8 @@ export default function CodeEditor({
         width: editorWidth ?? undefined,
         minWidth: 350,
         maxWidth: 1200,
+        height: '100%',
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',

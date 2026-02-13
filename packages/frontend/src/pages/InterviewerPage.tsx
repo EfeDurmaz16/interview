@@ -439,12 +439,6 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
           }}>
             {activeQuestion ? `${checklistCompletedCount} / ${evalCriteria.length} tamamlandi` : `0 / ${evalCriteria.length} tamamlandi`}
           </div>
-
-          <div className="right-panel__title" style={{ marginTop: '1rem' }}>Notlar</div>
-          <textarea
-            className="right-panel__textarea"
-            placeholder="Mulakat notlarinizi buraya yazin..."
-          />
         </div>
       </div>
     </>
