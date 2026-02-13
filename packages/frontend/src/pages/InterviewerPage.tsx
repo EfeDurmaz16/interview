@@ -58,7 +58,6 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     broadcastSessionStarted,
     broadcastSessionEnded,
   } = useEditor();
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
@@ -70,6 +69,10 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
   const [isEnding, setIsEnding] = useState(false);
   const [candidateConnected, setCandidateConnected] = useState(false);
   const didSyncToCandidateRef = useRef(false);
+  const [evaluationScoresByQuestion, setEvaluationScoresByQuestion] = useState<Record<string, Record<string, number>>>({});
+  const [notesByQuestion, setNotesByQuestion] = useState<Record<string, string>>({});
+  const [evaluationSaveStatus, setEvaluationSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [evaluationSaveError, setEvaluationSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +102,56 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
         setQuestions([]);
         setQuestionsError(e?.message ?? 'Failed to load questions');
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvaluations = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/evaluations`);
+        if (!res.ok) return;
+        const rows = await res.json();
+        if (cancelled || !Array.isArray(rows)) return;
+
+        const nextScores: Record<string, Record<string, number>> = {};
+        const nextNotes: Record<string, string> = {};
+        for (const row of rows) {
+          const questionId = String(row?.question_id ?? '');
+          if (!questionId) continue;
+
+          let parsedScores: Record<string, number> = {};
+          if (typeof row?.criteria_scores === 'string') {
+            try {
+              const decoded = JSON.parse(row.criteria_scores);
+              if (decoded && typeof decoded === 'object') {
+                parsedScores = Object.fromEntries(
+                  Object.entries(decoded).map(([k, v]) => [k, Number(v ?? 0)])
+                );
+              }
+            } catch {
+              parsedScores = {};
+            }
+          } else if (row?.criteria_scores && typeof row.criteria_scores === 'object') {
+            parsedScores = Object.fromEntries(
+              Object.entries(row.criteria_scores).map(([k, v]) => [k, Number(v ?? 0)])
+            );
+          }
+
+          nextScores[questionId] = parsedScores;
+          nextNotes[questionId] = String(row?.notes ?? '');
+        }
+
+        setEvaluationScoresByQuestion(nextScores);
+        setNotesByQuestion(nextNotes);
+      } catch {
+        // ignore preload errors
+      }
+    };
+
+    loadEvaluations();
     return () => {
       cancelled = true;
     };
@@ -237,7 +290,14 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
     if (sessionStatus === 'ended') return;
     if (!window.confirm('Mülakatı sonlandırmak istediğinize emin misiniz?')) return;
     setIsEnding(true);
+    let shouldClose = false;
     try {
+      const saved = await persistEvaluationForQuestion(currentQuestionId);
+      if (!saved) {
+        window.alert('Degerlendirme kaydedilemedi. Mulakat sonlandirilmadi.');
+        return;
+      }
+
       const res = await fetch(`/api/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -252,22 +312,97 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
         // ignore
       }
       broadcastSessionEnded('manual_end', serverNow);
+      shouldClose = true;
     } finally {
       setIsEnding(false);
-      onEndSession();
+      if (shouldClose) {
+        onEndSession();
+      }
     }
   };
 
-  const toggle = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-
   const evalCriteria = (activeQuestion?.evaluation_criteria?.length ? activeQuestion.evaluation_criteria : FALLBACK_EVAL)
     .map((c) => ({ id: c.id, label: c.label, max_score: c.max_score }));
+  const activeEvaluationScores = activeQuestion ? (evaluationScoresByQuestion[activeQuestion.id] ?? {}) : {};
+  const activeEvaluationNotes = activeQuestion ? (notesByQuestion[activeQuestion.id] ?? '') : '';
 
-  const checklistCompletedCount = (() => {
-    if (!activeQuestion) return 0;
-    const prefix = `${activeQuestion.id}:`;
-    return Object.entries(checked).filter(([k, v]) => v && k.startsWith(prefix)).length;
-  })();
+  const persistEvaluationForQuestion = async (questionId?: string): Promise<boolean> => {
+    if (!questionId) return true;
+
+    const question = questions.find((q) => q.id === questionId);
+    const criteria = (question?.evaluation_criteria?.length ? question.evaluation_criteria : FALLBACK_EVAL)
+      .map((c) => ({ id: c.id, max_score: c.max_score }));
+    const questionScores = evaluationScoresByQuestion[questionId] ?? {};
+    const criteriaScores: Record<string, number> = {};
+
+    for (const c of criteria) {
+      const raw = questionScores[c.id];
+      const normalized = Number.isFinite(Number(raw)) ? Number(raw) : 0;
+      criteriaScores[c.id] = Math.min(Math.max(normalized, 0), Number(c.max_score));
+    }
+
+    setEvaluationSaveStatus('saving');
+    setEvaluationSaveError(null);
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/questions/${questionId}/evaluation`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          criteria_scores: criteriaScores,
+          notes: notesByQuestion[questionId] ?? '',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`Save failed (${res.status})`);
+      }
+      setEvaluationSaveStatus('saved');
+      return true;
+    } catch (err: any) {
+      setEvaluationSaveStatus('error');
+      setEvaluationSaveError(err?.message ?? 'Evaluation save failed');
+      return false;
+    }
+  };
+
+  const handleSelectQuestionId = async (nextQuestionId: string) => {
+    if (currentQuestionId && currentQuestionId !== nextQuestionId) {
+      const saved = await persistEvaluationForQuestion(currentQuestionId);
+      if (!saved) {
+        return;
+      }
+    }
+    handleSetQuestion(nextQuestionId, { navPermission });
+    setEvaluationSaveStatus('idle');
+    setEvaluationSaveError(null);
+  };
+
+  const handleEvaluationScoreChange = (criterionId: string, score: number) => {
+    if (!activeQuestion) return;
+    const questionId = activeQuestion.id;
+    setEvaluationScoresByQuestion((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...(prev[questionId] ?? {}),
+        [criterionId]: score,
+      },
+    }));
+    if (evaluationSaveStatus !== 'idle') {
+      setEvaluationSaveStatus('idle');
+    }
+  };
+
+  const handleEvaluationNotesChange = (notes: string) => {
+    if (!activeQuestion) return;
+    const questionId = activeQuestion.id;
+    setNotesByQuestion((prev) => ({
+      ...prev,
+      [questionId]: notes,
+    }));
+    if (evaluationSaveStatus !== 'idle') {
+      setEvaluationSaveStatus('idle');
+    }
+  };
 
   return (
     <>
@@ -315,7 +450,14 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
         <InterviewerSidebar
           questions={questionSummaries}
           activeQuestionId={currentQuestionId}
-          onSelectQuestionId={(id) => handleSetQuestion(id, { navPermission })}
+          onSelectQuestionId={handleSelectQuestionId}
+          evaluationCriteria={evalCriteria}
+          evaluationScores={activeEvaluationScores}
+          onEvaluationScoreChange={handleEvaluationScoreChange}
+          evaluationNotes={activeEvaluationNotes}
+          onEvaluationNotesChange={handleEvaluationNotesChange}
+          evaluationSaveStatus={evaluationSaveStatus}
+          evaluationSaveError={evaluationSaveError}
         />
         <div className="center-panel">
           <EditorWithWhiteboard 
@@ -402,49 +544,6 @@ function InterviewerContent({ sessionId, onEndSession, candidateToken }: Intervi
             </div>
           ) : null}
 
-          {/* Checklist */}
-          <div className="right-panel__title" style={{ marginTop: '1rem' }}>Degerlendirme Kontrol Listesi</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {evalCriteria.map((item) => {
-              const key = activeQuestion ? `${activeQuestion.id}:${item.id}` : item.id;
-              return (
-              <label
-                key={key}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.5rem',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  color: checked[key] ? 'var(--jotform-success)' : 'var(--jotform-text)',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!checked[key]}
-                  onChange={() => toggle(key)}
-                  style={{ accentColor: 'var(--jotform-success)', marginTop: 2, flexShrink: 0 }}
-                />
-                <span style={{ textDecoration: checked[key] ? 'line-through' : 'none' }}>
-                  {item.label} <span style={{ color: 'var(--jotform-text-light)' }}>({item.max_score})</span>
-                </span>
-              </label>
-            )})}
-          </div>
-          <div style={{
-            marginTop: '0.75rem',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            color: 'var(--jotform-text-light)',
-          }}>
-            {activeQuestion ? `${checklistCompletedCount} / ${evalCriteria.length} tamamlandi` : `0 / ${evalCriteria.length} tamamlandi`}
-          </div>
-
-          <div className="right-panel__title" style={{ marginTop: '1rem' }}>Notlar</div>
-          <textarea
-            className="right-panel__textarea"
-            placeholder="Mulakat notlarinizi buraya yazin..."
-          />
         </div>
       </div>
     </>

@@ -4,6 +4,7 @@ class SessionRoutes {
         $tokenService = new TokenService();
         $sessionModel = new Session();
         $sessionService = new SessionService($tokenService, $sessionModel);
+        
         $router->post('/api/sessions', function ($params, $body) use ($sessionService) {
             $result = $sessionService->createSession($body['candidate_name'] ?? null);
             json($result, 201);
@@ -48,8 +49,8 @@ class SessionRoutes {
         });
 
         $router->get('/api/sessions/:id/report', function ($params, $body) {
-            $report = new Report();
-            $result = $report->generateReport($params['id']);
+            $reportService = new ReportService();
+            $result = $reportService->generate($params['id']);
             json($result ?? []);
         });
     }

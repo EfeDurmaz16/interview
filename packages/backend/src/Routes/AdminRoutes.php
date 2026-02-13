@@ -106,7 +106,9 @@ class AdminRoutes {
 
         $router->post('/api/admin/sessions', function ($params, $body) use ($sessionService, $requireSuperadmin) {
             if (!$requireSuperadmin()) return;
-            $result = $sessionService->createSession($body['candidate_name'] ?? null);
+            $candidateName = trim($body['candidate_name'] ?? '') ?? null;
+            if($candidateName === '' || mb_strlen($candidateName) > 120) return;
+            $result = $sessionService->createSession($candidateName);
             json($result, 201);
         });
 

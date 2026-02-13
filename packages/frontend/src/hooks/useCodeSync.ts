@@ -21,6 +21,7 @@ export function useCodeSync(token: string) {
     });
   };
 
+  //payload'ın içi dolacak sadece code yeterli değil multi-file desteği gelmeli
   const sendSubmit = (code: string, questionId: string, whiteboardSnapshot?: string) => {
     sendMessage({
       type: WSMessageType.SUBMIT_CODE,

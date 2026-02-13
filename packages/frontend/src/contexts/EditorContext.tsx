@@ -39,8 +39,6 @@ const EditorContext = createContext<{
   handleWhiteboardChange: (snapshot: TLEditorSnapshot) => void;
   broadcastSessionStarted: (startedAt?: string, serverNow?: string) => void;
   broadcastSessionEnded: (reason?: string, serverNow?: string) => void;
-  getNextQuestionId?: () => string | null;
-  setGetNextQuestionId?: (fn: () => string | null) => void;
 } | undefined>(undefined);
 
 export function EditorProvider({ 
@@ -68,7 +66,6 @@ export function EditorProvider({
   const [lastRemoteSubmission, setLastRemoteSubmission] = useState<{ questionId?: string; at: number } | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<ActiveQuestionPayload | null>(null);
   const [whiteboardSnapshot, setWhiteboardSnapshot] = useState<TLEditorSnapshot | null>(null);
-  const getNextQuestionIdRef = useRef<(() => string | null) | null>(null);
   const {
     sendCodeChange,
     sendRun,
@@ -176,7 +173,7 @@ export function EditorProvider({
   }, [code, sendRun, sendCodeOutput]);
 
   // handleSubmit: WS SUBMIT_CODE gönder
-  const handleSubmit = useCallback(async (qId?: string, autoAdvance: boolean = true) => {
+  const handleSubmit = useCallback(async (qId?: string) => {
     const resolvedQuestionId = qId || currentQuestionId || questionId;
     if (!resolvedQuestionId) {
       console.warn('handleSubmit: questionId is required');
@@ -192,22 +189,9 @@ export function EditorProvider({
     
     sendSubmit(code, resolvedQuestionId, whiteboardImage);
     setSubmitState({ status: 'sent', lastSentAt: Date.now() });
-    
-    // Auto advance to next question if enabled
-    if (autoAdvance && getNextQuestionIdRef.current) {
-      const nextId = getNextQuestionIdRef.current();
-      if (nextId) {
-        setTimeout(() => {
-          setCurrentQuestionId(nextId);
-          sendSetQuestion(nextId);
-        }, 500); // Small delay to show submit success
-      } else {
-        // This was the last question - trigger end interview confirmation
-        return 'last_question';
-      }
-    }
+
     return 'submitted';
-  }, [code, currentQuestionId, questionId, sendSubmit, sendSetQuestion]);
+  }, [code, currentQuestionId, questionId, sendSubmit]);
 
   const handleClear = useCallback(() => {
     setIsRunning(false);
@@ -245,10 +229,6 @@ export function EditorProvider({
       ...(serverNowIso ? { server_now: serverNowIso } : {}),
     });
   }, [sendSessionEnded]);
-
-  const setGetNextQuestionId = useCallback((fn: () => string | null) => {
-    getNextQuestionIdRef.current = fn;
-  }, []);
 
   const whiteboardDebounceRef = useRef<number | null>(null);
   
@@ -309,8 +289,6 @@ export function EditorProvider({
         handleWhiteboardChange,
         broadcastSessionStarted,
         broadcastSessionEnded,
-        getNextQuestionId: getNextQuestionIdRef.current || undefined,
-        setGetNextQuestionId,
       }}
     >
       {children}

@@ -1,10 +1,10 @@
 <?php 
 class Session{
-    public function create(): string {
+    public function create(string $candidate_name): string {
         $id = 'ses_' . uniqid();
         $db = Database::getConnection();
-        $stmt = $db->prepare('INSERT INTO sessions (id) VALUES (?)');
-        $stmt->execute([$id]);
+        $stmt = $db->prepare('INSERT INTO sessions (id, candidate_name) VALUES (?, ?)');
+        $stmt->execute([$id, $candidate_name]);
         return $id; 
     }
 

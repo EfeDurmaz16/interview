@@ -2,7 +2,6 @@ import Header from '../components/Header/Header';
 import IntervieweeSidebar from '../components/Sidebar/IntervieweeSidebar';
 import EditorWithWhiteboard from '../components/Editor/EditorWithWhiteboard';
 import OutputPanel from '../components/Output/OutputPanel';
-import ConfirmationModal from '../components/Modal/ConfirmationModal';
 import { EditorProvider, useEditor } from '../contexts/EditorContext';
 import { useParams } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,17 +31,12 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     executionTime,
     lastMessage,
     currentQuestionId,
-    navPermission,
-    interviewerQuestionId,
     whiteboardSnapshot,
     handleCodeChange,
     handleRun,
     handleSubmit,
     handleClear,
-    handleSetQuestion,
     handleWhiteboardChange,
-    setGetNextQuestionId,
-    broadcastSessionEnded,
   } = useEditor();
   const [sessionStatus, setSessionStatus] = useState<'waiting' | 'active' | 'ended'>('waiting');
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -50,7 +44,7 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
   const [endedNotice, setEndedNotice] = useState(false);
   const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
-  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [submitNotice, setSubmitNotice] = useState<string | null>(null);
   const fetchCountRef = useRef(0);
 
   const loadQuestions = useCallback(() => {
@@ -90,54 +84,6 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
     () => questions.map((q) => ({ id: q.id, title: q.title, difficulty: q.difficulty })),
     [questions]
   );
-  
-  // Function to get next question ID
-  const getNextQuestionId = useCallback(() => {
-    if (!currentQuestionId || questions.length === 0) return null;
-    
-    const currentIndex = questions.findIndex(q => q.id === currentQuestionId);
-    if (currentIndex === -1 || currentIndex >= questions.length - 1) return null;
-    
-    const nextQuestion = questions[currentIndex + 1];
-    
-    // Check if user can navigate to next question based on permissions
-    if (navPermission === 'none' && !interviewerQuestionId) {
-      return null; // Can't auto-advance if no permission
-    }
-    
-    if (navPermission === 'prev_only') {
-      // Check if next question is allowed (within interviewer's range)
-      const interviewerIndex = interviewerQuestionId ? 
-        questions.findIndex(q => q.id === interviewerQuestionId) : -1;
-      if (currentIndex + 1 > interviewerIndex && interviewerIndex >= 0) {
-        return null; // Can't go beyond interviewer's question
-      }
-    }
-    
-    return nextQuestion?.id || null;
-  }, [currentQuestionId, questions, navPermission, interviewerQuestionId]);
-  
-  // Register getNextQuestionId with EditorContext
-  useEffect(() => {
-    if (setGetNextQuestionId) {
-      setGetNextQuestionId(getNextQuestionId);
-    }
-  }, [getNextQuestionId, setGetNextQuestionId]);
-
-  const canSelectQuestionId = useMemo(() => {
-    const interviewerIndex = interviewerQuestionId ? questions.findIndex((q) => q.id === interviewerQuestionId) : -1;
-    const allowedMaxIndex = navPermission === 'both' ? questions.length - 1 : navPermission === 'prev_only' ? interviewerIndex : interviewerIndex;
-
-    return (id: string) => {
-      if (!id) return false;
-      const idx = questions.findIndex((q) => q.id === id);
-      if (idx < 0) return false;
-      if (navPermission === 'both') return true;
-      if (navPermission === 'prev_only') return allowedMaxIndex >= 0 && idx <= allowedMaxIndex;
-      // 'none'
-      return interviewerQuestionId ? id === interviewerQuestionId : idx === allowedMaxIndex;
-    };
-  }, [questions, navPermission, interviewerQuestionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,24 +155,14 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
 
   const isEnded = endedNotice || sessionStatus === 'ended';
   const editorDisabled = isEnded || !activeQuestion;
-  
-  // Wrapped submit handler to check for last question
-  const handleSubmitWithConfirmation = useCallback(async () => {
+
+  const handleCandidateSubmit = useCallback(async () => {
     const result = await handleSubmit();
-    if (result === 'last_question') {
-      // Show confirmation modal for ending interview
-      setShowEndConfirmation(true);
+    if (result === 'submitted') {
+      setSubmitNotice('Kodun gonderildi. Soru degisimini sadece interviewer yapabilir.');
+      window.setTimeout(() => setSubmitNotice(null), 2500);
     }
   }, [handleSubmit]);
-  
-  // Handle end interview confirmation
-  const handleEndInterview = useCallback(() => {
-    setShowEndConfirmation(false);
-    // Send session ended message
-    broadcastSessionEnded?.('completed');
-    setSessionStatus('ended');
-    setEndedNotice(true);
-  }, [broadcastSessionEnded]);
 
   return (
     <>
@@ -241,12 +177,6 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
           question={activeQuestion}
           questions={questionSummaries}
           activeQuestionId={currentQuestionId}
-          navPermission={navPermission}
-          canSelectQuestionId={canSelectQuestionId}
-          onSelectQuestionId={(id) => {
-            if (!canSelectQuestionId(id)) return;
-            handleSetQuestion(id);
-          }}
         />
         <div className="center-panel">
           <EditorWithWhiteboard
@@ -256,12 +186,17 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
             disabled={editorDisabled}
             onCodeChange={editorDisabled ? undefined : handleCodeChange}
             onRun={editorDisabled ? undefined : handleRun}
-            onSubmit={editorDisabled ? undefined : handleSubmitWithConfirmation}
+            onSubmit={editorDisabled ? undefined : handleCandidateSubmit}
             onClear={handleClear}
             onWhiteboardChange={handleWhiteboardChange}
             externalWhiteboardSnapshot={whiteboardSnapshot}
           />
           <OutputPanel output={output} error={error} isRunning={isRunning} executionTime={executionTime} />
+          {submitNotice && (
+            <div style={{ marginTop: '0.5rem', padding: '0 1rem', fontSize: '0.8125rem', color: 'var(--jotform-text-light)' }}>
+              {submitNotice}
+            </div>
+          )}
           {!activeQuestion && (
             <div style={{ marginTop: '0.5rem', padding: '0 1rem', fontSize: '0.8125rem', color: 'var(--jotform-text-light)' }}>
               {questionsError ? `Sorular yüklenemedi: ${questionsError}` : 'Interviewer bir soru seçtiğinde editör aktif olacak.'}
@@ -269,25 +204,6 @@ function IntervieweeContent({ sessionId }: { sessionId: string }) {
           )}
         </div>
       </div>
-      
-      <ConfirmationModal
-        isOpen={showEndConfirmation}
-        onConfirm={handleEndInterview}
-        onCancel={() => setShowEndConfirmation(false)}
-        title="Mülakatı Bitir"
-        message={
-          <div>
-            <p>Son soruyu da tamamladınız!</p>
-            <p>Mülakatı bitirmek istediğinizden emin misiniz?</p>
-            <p style={{ marginTop: '12px', fontSize: '14px', color: '#888' }}>
-              Mülakat bitirildikten sonra sorulara geri dönülemez.
-            </p>
-          </div>
-        }
-        confirmText="Mülakatı Bitir"
-        cancelText="Devam Et"
-        confirmButtonClass="btn-success"
-      />
     </>
   );
 }

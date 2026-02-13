@@ -19,6 +19,7 @@ require __DIR__ . '/../src/Routes/QuestionRoutes.php';
 require __DIR__ . '/../src/Routes/EvaluationRoutes.php';
 require __DIR__ . '/../src/Routes/AdminRoutes.php';
 require __DIR__ . '/../src/Services/AuthService.php';
+require __DIR__ . '/../src/Models/File.php';
 
 // CORS headers
 header('Access-Control-Allow-Origin: *');

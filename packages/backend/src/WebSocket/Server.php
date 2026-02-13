@@ -6,6 +6,7 @@ require_once __DIR__ . "/MessageHandler.php";
 require_once __DIR__ . "/../Models/CodeSnapshot.php";
 require_once __DIR__ . "/../Models/Session.php";
 require_once __DIR__ . "/../Models/Question.php";
+require_once __DIR__ . "/../Models/File.php";
 require_once __DIR__ . "/../Services/TokenService.php";
 require_once __DIR__ . "/../Services/SessionService.php";
 require_once __DIR__ . "/../Services/SessionQuestionService.php";

@@ -14,12 +14,13 @@ class SessionService{
      * @return array
      */
     public function createSession(?string $candidateName): array {
-        $sessionId = $this->sessionModel->create();
+        $sessionId = $this->sessionModel->create($candidateName);
         $tokens = $this->tokenService->createSessionTokens($sessionId);
         return [
             'session_id' => $sessionId,
             'interviewer_token' => $tokens['interviewer_token'],
             'candidate_token' => $tokens['candidate_token'],
+            'candidate_name' => $candidateName,
             'interviewer_url' => self::frontendBaseUrl() . "/interview/{$tokens['interviewer_token']}",
             'candidate_url' => self::frontendBaseUrl() . "/interview/{$tokens['candidate_token']}"
         ];
